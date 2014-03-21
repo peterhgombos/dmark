@@ -1,0 +1,36 @@
+\section{Preliminaries}
+
+\subsection{Background}
+
+Relevant work we'll be looking at: \cite{Grannaes355273}, \cite{Grannaes481837}, \cite{Jahre355239}
+
+\subsubsection{Delta Correlating Prediciton Tables}
+
+\subsubsection{Tiered Delta Correlating Prediciton Tables}
+
+The TDCPT~\cite{Somaen} aimed to improve upon DCPT~\cite{Grannaes481837}, by
+adding "tiers" to the ring buffer-scheme that was used in DCPT. The reasoning
+behind this was that a large amount of the accesses that filtered through the
+scheme were only used a few times, without creating proper patterns. (50\%
+according to Sømåen et al).
+
+% TODO: Something about how it failed
+
+
+\subsection{Prefetcher Description}
+
+Our prefetcher (working title: Dynamically Tiered Delta Correlating Prediction
+Tables) aims to have dynamically sized tiers to improve upon the potential
+pitfalls that the original TDCPT-prefetcher fell into. Additionally it will
+gather some statistics about the hit-rates for the various tiers to attempt to
+decide better what size the various tiers should be, and whether or not to tier
+at all.
+
+% TODO: Fill in more when the architecture becomes a bit clearer.
+
+\subsection{Methodology}
+
+We will be investigating the value of dynamically tiering the DCPT by
+implementing the algorithm in software and testing it with a subset of the SPEC
+CPU2000 benchmark.  The algorithm will be implemented in C and run on the M5
+simulator.
