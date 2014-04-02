@@ -4,151 +4,174 @@
  * was just accessed. It also ignores requests to blocks already in the cache.
  */
 
+#include <vector>
+
 #include "interface.hh"
+#include "DeltaEntry.hh"
+#include "DeltaArray.hh"
 
-#define TABLE_SIZE 60
-#define NUM_DELTAS 20
-
-typedef int16_t deltaType;
-
-
-class wrappingArray
+DeltaArray::DeltaArray (int n) :
+  arr(NULL),
+  size(n)
 {
-	deltaType data[NUM_DELTAS];
-public:
-	deltaType& operator[](int index) {
-		if (index >= 0 && index < NUM_DELTAS) {
-			return data[index];	
-		} else if (index < 0) {
-			return data[NUM_DELTAS + (index % NUM_DELTAS)];
-		} else {
-			return data[index % NUM_DELTAS];
-		}
-	}
-}; 
+  arr = new int16_t[n];
 
-struct delta_entry
+  for (int i = 0; i < n; n++)
+  {
+    arr[i] = 0;
+  }
+}
+
+delta_t DeltaArray::get(int index)
 {
-	Addr PC;
-	Addr last_adress;
-	Addr last_prefetch;	
-	wrappingArray deltas;
-	//deltaType deltas[NUM_DELTAS];
-	int delta_index;
+  if (index >= 0 && index < size)
+  {
+    return arr[index];
+  }
+  else if (index < 0)
+  {
+    return arr[size + (index % size)];
+  }
+  else
+  {
+    return arr[index % size];
+  }
+}
 
-	void init_delta_entry(Addr PC, Addr last_adress) {
-		this->PC = PC;
-		this->last_adress = last_adress;
-		last_prefetch = 0;
-		for (int i = 0; i < NUM_DELTAS; i++) {
-			deltas[i] = 0;
-		}
-		delta_index = 0;
-	}
+DeltaEntry::DeltaEntry (int n) :
+  _PC(0),
+  _last_address(0),
+  _last_prefetch(0),
+  _data(NULL),
+  _data_size(n),
+  _delta_index(0)
+{
+  _data = new DeltaArray(n);
+}
 
-	void insert_delta_into_entry(Addr curr_addr) {	
-		deltas[delta_index++] = curr_addr - last_adress;
-		last_adress = curr_addr;
-		if (delta_index == NUM_DELTAS) {
-			delta_index = 0;
-		}
-	}
+DeltaEntry::~DeltaEntry ()
+{
+  delete [] _data;
+}
 
-};
+void DeltaEntry::correlation (Addr *candidates)
+{
+  int candidate_index = 0;
 
-static int lru_index = 0;
-static delta_entry entries[TABLE_SIZE];
+  for (int i = 0; i < _data_size; i++) {
+      candidates[i] = 0;
+  }
 
-delta_entry *locate_entry_for_PC(Addr PC)
+  delta_t d1 = _data->get(_delta_index);
+  delta_t d2 = _data->get(_delta_index - 1);
+  Addr address = _last_address;
+
+  candidate_index = 0;
+
+  for (int i = _delta_index - 2, j = 0; j < _data_size; i--, j++)
+  {
+    delta_t u, v;
+    u = _data->get(i - 1);
+    v = _data->get(i);
+
+    if (u == d1 && v == d2)
+    {
+      int k = i;
+      while (j >= 0)
+      {
+        if (_data->get(k) > 1000)
+        {
+          break;
+        }
+        address += _data->get(k);
+        candidates[candidate_index++] = address;
+        if (candidate_index == _data_size)
+        {
+          break;
+        }
+
+        j--;
+        k++;
+      }
+    }
+  }
+}
+
+void DeltaEntry::initialize (Addr PC, Addr last_address)
+{
+  _PC = PC;
+  _last_address = last_address;
+}
+
+void DeltaEntry::insert (Addr current_address)
+{
+  _data[_delta_index++] = current_address - _last_address;
+  _last_address = current_address;
+
+  if (_delta_index == _data_size)
+  {
+    _delta_index = 0;
+  }
+}
+
+Addr DeltaEntry::getPC ()
+{
+  return _PC;
+}
+
+Addr DeltaEntry::getLastAddress ()
+{
+  return _last_address;
+}
+
+void DeltaEntry::setLastPrefetch (Addr addr)
+{
+  _last_prefetch = addr;
+}
+
+int lru_index = 0;
+std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry(NUM_DELTAS));
+
+DeltaEntry* locate_entry_for_PC(Addr PC)
 {
 	for (int i = 0; i < TABLE_SIZE; i++) {
-		if (entries[i].PC == PC) {
-			return entries + i;
+		if (entries[i].getPC() == PC) {
+			return &(entries[i]);
 		}
 	}
 	if (lru_index == TABLE_SIZE) {
 		lru_index = 0;
 	}
-	return entries + lru_index++;
+	return &(entries[lru_index++]);
 }
 
 void prefetch_init(void)
 {
-	for (int i = 0; i < TABLE_SIZE; i++) {
-		entries[i].init_delta_entry(0, 0);
-	}
-    /* Called before any calls to prefetch_access. */
-    /* This is the place to initialize data structures. */
+  /* Called before any calls to prefetch_access. */
+  /* This is the place to initialize data structures. */
 
-    DPRINTF(HWPrefetch, "Initialized sequential-on-access prefetcher\n");
-}
-
-void delta_correlation(delta_entry *entry, Addr *candidates)
-{
-	for (int i = 0; i < NUM_DELTAS; i++) {
-		candidates[i] = 0;
-	}
-
-	deltaType d1 = entry->deltas[entry->delta_index];
-	deltaType d2 = entry->deltas[entry->delta_index - 1];
-	Addr adress = entry->last_adress;
-
-	int candidate_index = 0;
-	// TODO: Circular buffer.
-	for (int i = entry->delta_index - 2, j = 0; j < NUM_DELTAS; i--, j++) {
-		deltaType u, v;
-		u = entry->deltas[i - 1];
-		v = entry->deltas[i];
-		if (u == d1 && v == d2) {
-			// TODO: Circular buffer
-			int k = i;
-			for (; j >= 0; j--) {
-				// TODO: Dirty hack, we seem to get an overflow SOMEWHERE, so to avoid those entries:
-				if (entry->deltas[k] > 1000) {
-					break;
-				}
-				adress += entry->deltas[k];
-				candidates[candidate_index++] = adress;
-				if (candidate_index == NUM_DELTAS) {
-					break;
-				}
-				k++;
-			}
-			break;
-		}
-	}
-}
-
-void prefetch_filter(delta_entry *entry, Addr *candidates)
-{
-	for (int i = 0; i < NUM_DELTAS; i++) {
-		if (candidates[i] == 0) {
-			return;
-		}
-		if (!in_cache(candidates[i])) { // TODO: More tests
-			issue_prefetch(candidates[i]);
-		}
-		entry->last_prefetch = candidates[i]; // TODO: Implement usage of this
-	}
+  DPRINTF(HWPrefetch, "Initialized sequential-on-access prefetcher\n");
 }
 
 void prefetch_access(AccessStat stat)
 {
-    /* pf_addr is now an address within the _next_ cache block */
-	Addr curr_addr = stat.mem_addr;
-	delta_entry *entry = locate_entry_for_PC(stat.pc);
+  /* pf_addr is now an address within the _next_ cache block */
+  Addr curr_addr = stat.mem_addr;
+  DeltaEntry *entry = locate_entry_for_PC(stat.pc);
+  Addr candidates[NUM_DELTAS];
 
-	Addr candidates[NUM_DELTAS];
+  // From pseudocode in paper (Grannæs et al, Algorithm 1)
+  if (stat.pc != entry->getPC())
+  {
+      entry->initialize(stat.pc, curr_addr);
+  }
+  else if (curr_addr - entry->getLastAddress() != 0)
+  {
+      entry->insert(curr_addr);
 
-	// From pseudocode in paper (Grannæs et al, Algorithm 1)
-	if (stat.pc != entry->PC) {
-		entry->init_delta_entry(stat.pc, curr_addr);
-	} else if (curr_addr - entry->last_adress != 0)  {
-		entry->insert_delta_into_entry(curr_addr);
-
-		delta_correlation(entry, candidates);
-		prefetch_filter(entry, candidates); 
-	}
+      entry->correlation(candidates);
+      //prefetch_filter(entry, candidates);
+  }
 }
 
 void prefetch_complete(Addr addr)
