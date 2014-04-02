@@ -12,7 +12,7 @@ private:
   Addr _PC;
   Addr _last_address;
   Addr _last_prefetch;
-  DeltaArray* _data;
+  DeltaArray _data;
   int _data_size;
   int _delta_index;
 

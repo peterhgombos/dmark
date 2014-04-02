@@ -15,6 +15,7 @@ private:
 public:
   DeltaArray (int n);
   delta_t get(int index);
+  delta_t& operator[](int index);
   void zero(void);
 };
 

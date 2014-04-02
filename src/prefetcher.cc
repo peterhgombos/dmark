@@ -22,7 +22,11 @@ DeltaArray::DeltaArray (int n) :
   }
 }
 
-delta_t DeltaArray::get(int index)
+delta_t DeltaArray::get(int index) {
+	return (*this)[index];
+}
+
+delta_t& DeltaArray::operator[](int index)
 {
   if (index >= 0 && index < _size)
   {
@@ -50,28 +54,21 @@ DeltaEntry::DeltaEntry () :
   _PC(0),
   _last_address(0),
   _last_prefetch(0),
-  _data(NULL),
+  _data(NUM_DELTAS),
   _data_size(NUM_DELTAS),
   _delta_index(0)
-{
-  _data = new DeltaArray(_data_size);
-}
+{}
 
 DeltaEntry::DeltaEntry (int n) :
   _PC(0),
   _last_address(0),
   _last_prefetch(0),
-  _data(NULL),
+  _data(n),
   _data_size(n),
   _delta_index(0)
-{
-  _data = new DeltaArray(_data_size);
-}
+{}
 
-DeltaEntry::~DeltaEntry ()
-{
-  delete [] _data;
-}
+DeltaEntry::~DeltaEntry () {}
 
 void DeltaEntry::correlation (Addr *candidates)
 {
@@ -81,8 +78,8 @@ void DeltaEntry::correlation (Addr *candidates)
       candidates[i] = 0;
   }
 
-  delta_t d1 = _data->get(_delta_index);
-  delta_t d2 = _data->get(_delta_index - 1);
+  delta_t d1 = _data[_delta_index];
+  delta_t d2 = _data[_delta_index - 1];
   Addr address = _last_address;
 
   candidate_index = 0;
@@ -90,19 +87,19 @@ void DeltaEntry::correlation (Addr *candidates)
   for (int i = _delta_index - 2, j = 0; j < _data_size; i--, j++)
   {
     delta_t u, v;
-    u = _data->get(i - 1);
-    v = _data->get(i);
+    u = _data[i - 1];
+    v = _data[i];
 
     if (u == d1 && v == d2)
     {
       int k = i;
       while (j >= 0)
       {
-        if (_data->get(k) > 1000)
+        if (_data[k] > 1000)
         {
           break;
         }
-        address += _data->get(k);
+        address += _data[k];
         candidates[candidate_index++] = address;
         if (candidate_index == _data_size)
         {
@@ -138,7 +135,7 @@ void DeltaEntry::initialize (Addr PC, Addr last_address)
   _PC = PC;
   _last_address = last_address;
 
-  _data->zero();
+  _data.zero();
 }
 
 void DeltaEntry::insert (Addr current_address)
