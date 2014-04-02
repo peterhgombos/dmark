@@ -56,9 +56,8 @@ struct delta_entry
 
 };
 
-int lru_index = 0;
-
-delta_entry entries[TABLE_SIZE];
+static int lru_index = 0;
+static delta_entry entries[TABLE_SIZE];
 
 delta_entry *locate_entry_for_PC(Addr PC)
 {
