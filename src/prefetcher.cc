@@ -11,30 +11,38 @@
 #include "DeltaArray.hh"
 
 DeltaArray::DeltaArray (int n) :
-  arr(NULL),
-  size(n)
+  _arr(NULL),
+  _size(n)
 {
-  arr = new int16_t[n];
+  _arr = new int16_t[n];
 
   for (int i = 0; i < n; i++)
   {
-    arr[i] = 0;
+    _arr[i] = 0;
   }
 }
 
 delta_t DeltaArray::get(int index)
 {
-  if (index >= 0 && index < size)
+  if (index >= 0 && index < _size)
   {
-    return arr[index];
+    return _arr[index];
   }
   else if (index < 0)
   {
-    return arr[size + (index % size)];
+    return _arr[_size + (index % _size)];
   }
   else
   {
-    return arr[index % size];
+    return _arr[index % _size];
+  }
+}
+
+void DeltaArray::zero (void)
+{
+  for (int i = 0; i < _size; i++)
+  {
+    _arr[i] = 0;
   }
 }
 
@@ -129,6 +137,8 @@ void DeltaEntry::initialize (Addr PC, Addr last_address)
 {
   _PC = PC;
   _last_address = last_address;
+
+  _data->zero();
 }
 
 void DeltaEntry::insert (Addr current_address)

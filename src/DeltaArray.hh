@@ -9,12 +9,13 @@ typedef int16_t delta_t;
 class DeltaArray
 {
 private:
-  delta_t* arr;
-  int size;
+  delta_t* _arr;
+  int _size;
 
 public:
   DeltaArray (int n);
   delta_t get(int index);
+  void zero(void);
 };
 
 #endif /* __DELTA_T_ */
