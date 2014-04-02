@@ -104,16 +104,14 @@ DeltaEntry::~DeltaEntry () {}
 void DeltaEntry::correlation (Addr *candidates)
 {
   int candidate_index = 0;
-
-  for (int i = 0; i < _data_size; i++) {
-      candidates[i] = 0;
-  }
-
   delta_t d1 = _data[_delta_index];
   delta_t d2 = _data[_delta_index - 1];
   Addr address = _last_address;
 
-  candidate_index = 0;
+  for (int i = 0; i < _data_size; i++)
+  {
+      candidates[i] = 0;
+  }
 
   for (int i = _delta_index - 2, j = 0; j < _data_size; i--, j++)
   {
@@ -129,8 +127,10 @@ void DeltaEntry::correlation (Addr *candidates)
         {
           break;
         }
+
         address += _data[k];
         candidates[candidate_index++] = address;
+
         if (candidate_index == _data_size)
         {
           break;
@@ -139,6 +139,7 @@ void DeltaEntry::correlation (Addr *candidates)
         j--;
         k++;
       }
+      break;
     }
 	break;
   }
