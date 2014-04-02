@@ -20,11 +20,11 @@ public:
   DeltaEntry (int n);
   ~DeltaEntry ();
   void correlation (Addr *candidates);
+  void filter (Addr *candidates);
   void initialize (Addr PC, Addr last_address);
   void insert (Addr current_address);
   Addr getPC ();
   Addr getLastAddress ();
-  void setLastPrefetch (Addr addr);
 };
 
 #endif /* __DELTA_ENTRY_ */

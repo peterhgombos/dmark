@@ -16,7 +16,7 @@ DeltaArray::DeltaArray (int n) :
 {
   arr = new int16_t[n];
 
-  for (int i = 0; i < n; n++)
+  for (int i = 0; i < n; i++)
   {
     arr[i] = 0;
   }
@@ -97,6 +97,23 @@ void DeltaEntry::correlation (Addr *candidates)
   }
 }
 
+void DeltaEntry::filter (Addr *candidates)
+{
+  for (int i = 0; i < _data_size; i++)
+  {
+    if (candidates[i] == 0)
+    {
+      return;
+    }
+
+    if (!in_cache(candidates[i]))
+    {
+      issue_prefetch(candidates[i]);
+    }
+    _last_prefetch = candidates[i];
+  }
+}
+
 void DeltaEntry::initialize (Addr PC, Addr last_address)
 {
   _PC = PC;
@@ -122,11 +139,6 @@ Addr DeltaEntry::getPC ()
 Addr DeltaEntry::getLastAddress ()
 {
   return _last_address;
-}
-
-void DeltaEntry::setLastPrefetch (Addr addr)
-{
-  _last_prefetch = addr;
 }
 
 int lru_index = 0;
@@ -168,9 +180,8 @@ void prefetch_access(AccessStat stat)
   else if (curr_addr - entry->getLastAddress() != 0)
   {
       entry->insert(curr_addr);
-
       entry->correlation(candidates);
-      //prefetch_filter(entry, candidates);
+      entry->filter(candidates);
   }
 }
 
