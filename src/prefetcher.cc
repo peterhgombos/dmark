@@ -12,7 +12,8 @@
 typedef int16_t deltaType;
 
 
-class wrappingArray{
+class wrappingArray
+{
 	deltaType data[NUM_DELTAS];
 public:
 	deltaType& operator[](int index) {
@@ -26,8 +27,8 @@ public:
 	}
 }; 
 
-
-struct delta_entry {
+struct delta_entry
+{
 	Addr PC;
 	Addr last_adress;
 	Addr last_prefetch;	
@@ -55,12 +56,12 @@ struct delta_entry {
 
 };
 
-
 int lru_index = 0;
 
 delta_entry entries[TABLE_SIZE];
 
-delta_entry *locate_entry_for_PC(Addr PC) {
+delta_entry *locate_entry_for_PC(Addr PC)
+{
 	for (int i = 0; i < TABLE_SIZE; i++) {
 		if (entries[i].PC == PC) {
 			return entries + i;
@@ -83,7 +84,8 @@ void prefetch_init(void)
     DPRINTF(HWPrefetch, "Initialized sequential-on-access prefetcher\n");
 }
 
-void delta_correlation(delta_entry *entry, Addr *candidates) {
+void delta_correlation(delta_entry *entry, Addr *candidates)
+{
 	for (int i = 0; i < NUM_DELTAS; i++) {
 		candidates[i] = 0;
 	}
@@ -118,7 +120,8 @@ void delta_correlation(delta_entry *entry, Addr *candidates) {
 	}
 }
 
-void prefetch_filter(delta_entry *entry, Addr *candidates) {
+void prefetch_filter(delta_entry *entry, Addr *candidates)
+{
 	for (int i = 0; i < NUM_DELTAS; i++) {
 		if (candidates[i] == 0) {
 			return;
@@ -149,7 +152,8 @@ void prefetch_access(AccessStat stat)
 	}
 }
 
-void prefetch_complete(Addr addr) {
+void prefetch_complete(Addr addr)
+{
     /*
      * Called when a block requested by the prefetcher has been loaded.
      */
