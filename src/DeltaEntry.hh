@@ -17,14 +17,15 @@ private:
   int _delta_index;
 
 public:
+  DeltaEntry (void);
   DeltaEntry (int n);
-  ~DeltaEntry ();
+  ~DeltaEntry (void);
   void correlation (Addr *candidates);
   void filter (Addr *candidates);
   void initialize (Addr PC, Addr last_address);
   void insert (Addr current_address);
-  Addr getPC ();
-  Addr getLastAddress ();
+  Addr getPC (void);
+  Addr getLastAddress (void);
 };
 
 #endif /* __DELTA_ENTRY_ */

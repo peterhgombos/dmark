@@ -38,6 +38,17 @@ delta_t DeltaArray::get(int index)
   }
 }
 
+DeltaEntry::DeltaEntry () :
+  _PC(0),
+  _last_address(0),
+  _last_prefetch(0),
+  _data(NULL),
+  _data_size(NUM_DELTAS),
+  _delta_index(0)
+{
+  _data = new DeltaArray(_data_size);
+}
+
 DeltaEntry::DeltaEntry (int n) :
   _PC(0),
   _last_address(0),
@@ -46,7 +57,7 @@ DeltaEntry::DeltaEntry (int n) :
   _data_size(n),
   _delta_index(0)
 {
-  _data = new DeltaArray(n);
+  _data = new DeltaArray(_data_size);
 }
 
 DeltaEntry::~DeltaEntry ()
@@ -142,7 +153,7 @@ Addr DeltaEntry::getLastAddress ()
 }
 
 int lru_index = 0;
-std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry(NUM_DELTAS));
+DeltaEntry entries[TABLE_SIZE];
 
 DeltaEntry* locate_entry_for_PC(Addr PC)
 {
