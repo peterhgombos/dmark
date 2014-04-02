@@ -6,16 +6,33 @@
 
 #include "interface.hh"
 
-#define TABLE_SIZE 256
-#define NUM_DELTAS 128
+#define TABLE_SIZE 60
+#define NUM_DELTAS 20
 
-typedef Addr deltaType;
+typedef int16_t deltaType;
+
+
+class wrappingArray{
+	deltaType data[NUM_DELTAS];
+public:
+	deltaType& operator[](int index) {
+		if (index >= 0 && index < NUM_DELTAS) {
+			return data[index];	
+		} else if (index < 0) {
+			return data[NUM_DELTAS + (index % NUM_DELTAS)];
+		} else {
+			return data[index % NUM_DELTAS];
+		}
+	}
+}; 
+
 
 struct delta_entry {
 	Addr PC;
 	Addr last_adress;
 	Addr last_prefetch;	
-	deltaType deltas[NUM_DELTAS];
+	wrappingArray deltas;
+	//deltaType deltas[NUM_DELTAS];
 	int delta_index;
 
 	void init_delta_entry(Addr PC, Addr last_adress) {
@@ -77,22 +94,24 @@ void delta_correlation(delta_entry *entry, Addr *candidates) {
 
 	int candidate_index = 0;
 	// TODO: Circular buffer.
-	for (int i = entry->delta_index - 2; i >= 0; i--) {
+	for (int i = entry->delta_index - 2, j = 0; j < NUM_DELTAS; i--, j++) {
 		deltaType u, v;
-		u = (i == 0 ? entry->deltas[NUM_DELTAS - 1] : entry->deltas[i - 1]);
+		u = entry->deltas[i - 1];
 		v = entry->deltas[i];
 		if (u == d1 && v == d2) {
 			// TODO: Circular buffer
-			for (int j = i; j < entry->delta_index; j++) {
+			int k = i;
+			for (; j >= 0; j--) {
 				// TODO: Dirty hack, we seem to get an overflow SOMEWHERE, so to avoid those entries:
-				if (entry->deltas[j] > 1000) {
+				if (entry->deltas[k] > 1000) {
 					break;
 				}
-				adress += entry->deltas[j];
+				adress += entry->deltas[k];
 				candidates[candidate_index++] = adress;
 				if (candidate_index == NUM_DELTAS) {
 					break;
 				}
+				k++;
 			}
 			break;
 		}
