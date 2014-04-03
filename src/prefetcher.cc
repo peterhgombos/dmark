@@ -29,9 +29,9 @@ void prepare_prefetch(Addr address)
   for (int i = 0; i < 32; i++)
   {
     if (prefetch_queue[i] == 0)
-	{
+	  {
       prefetch_queue_pos = i;
-	}
+	  }
   }
   prefetch_queue[prefetch_queue_pos++] = address; 
   if (prefetch_queue_pos == 32)
@@ -255,6 +255,6 @@ void prefetch_complete(Addr addr)
   for (int i = 0; i < 32; i++) {
     if (prefetch_queue[i] == addr) {
       prefetch_queue[i] = 0;
-	}
+	  }
   }
 }
