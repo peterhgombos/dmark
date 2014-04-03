@@ -37,6 +37,8 @@ private:
 
 public:
   DeltaArray (int n);
+  DeltaArray (const DeltaArray &rhs);
+  DeltaArray& operator= (const DeltaArray &rhs);
   delta_t get(int index) { return (*this)[index]; }
   delta_t& operator[](int index);
   void zero(void);
@@ -52,6 +54,28 @@ DeltaArray::DeltaArray (int n) :
   {
     _arr[i] = 0;
   }
+}
+
+DeltaArray::DeltaArray(const DeltaArray &rhs)
+{
+  _size = rhs._size;
+  _arr = new delta_t[_size];
+  for (int i = 0; i < _size; i++)
+  {
+    _arr[i] = rhs._arr[i];
+  }
+}
+
+DeltaArray& DeltaArray::operator=(const DeltaArray &rhs)
+{
+  delete[] _arr;
+  _size = rhs._size;
+  _arr = new delta_t[_size];
+  for (int i = 0; i < _size; i++)
+  {
+    _arr[i] = rhs._arr[i];
+  }
+  return *this;
 }
 
 delta_t& DeltaArray::operator[](int index)
@@ -95,6 +119,7 @@ private:
 public:
   DeltaEntry (void);
   DeltaEntry (int n);
+  DeltaEntry& operator=(const DeltaEntry &rhs);
   void correlation (Addr *candidates);
   void filter (Addr *candidates);
   void initialize (Addr PC, Addr last_address);
@@ -121,6 +146,17 @@ DeltaEntry::DeltaEntry (int n) :
   _data_size(n),
   _delta_index(0)
 {}
+
+DeltaEntry& DeltaEntry::operator=(const DeltaEntry &rhs)
+{
+  _pc = rhs._pc;
+  _last_address = rhs._last_address;
+  _last_prefetch = rhs._last_prefetch;
+  _data = rhs._data;
+  _data_size = rhs._data_size;
+  _delta_index = rhs._delta_index;
+  return *this;
+}
 
 void DeltaEntry::correlation (Addr *candidates)
 {
