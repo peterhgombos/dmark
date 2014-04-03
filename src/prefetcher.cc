@@ -10,36 +10,30 @@
 #include "DeltaEntry.hh"
 #include "DeltaArray.hh"
 
-Addr prefetch_queue[32]; // Size taken from paper by Grannæs et al.
-int prefetch_queue_pos = 0;
+#define TABLE_SIZE 60
+#define NUM_DELTAS 20
 
-bool in_prefetch_queue(Addr address) {
-  for (int i = 0; i < 32; i++)
-  {
-    if (prefetch_queue[i] == address)
-	{
-      return true;
-    }
-  }
-  return false;
-}
+typedef int16_t delta_t;
 
-void prepare_prefetch(Addr address)
+bool in_prefetch_queue(Addr address);
+void prepare_prefetch(Addr address);
+
+///////////////////////////
+////// DeltaArray   ///////
+///////////////////////////
+
+class DeltaArray
 {
-  for (int i = 0; i < 32; i++)
-  {
-    if (prefetch_queue[i] == 0)
-	  {
-      prefetch_queue_pos = i;
-	  }
-  }
-  prefetch_queue[prefetch_queue_pos++] = address; 
-  if (prefetch_queue_pos == 32)
-  {
-    prefetch_queue_pos--;
-  }
-}
+private:
+  delta_t* _arr;
+  int _size;
 
+public:
+  DeltaArray (int n);
+  delta_t get(int index) { return (*this)[index] }
+  delta_t& operator[](int index);
+  void zero(void);
+};
 
 DeltaArray::DeltaArray (int n) :
   _arr(NULL),
@@ -51,10 +45,6 @@ DeltaArray::DeltaArray (int n) :
   {
     _arr[i] = 0;
   }
-}
-
-delta_t DeltaArray::get(int index) {
-	return (*this)[index];
 }
 
 delta_t& DeltaArray::operator[](int index)
@@ -80,6 +70,33 @@ void DeltaArray::zero (void)
     _arr[i] = 0;
   }
 }
+
+///////////////////////////
+////// DeltaEntry   ///////
+///////////////////////////
+
+class DeltaEntry
+{
+private:
+  Addr _pc;
+  Addr _last_address;
+  Addr _last_prefetch;
+  DeltaArray _data;
+  int _data_size;
+  int _delta_index;
+
+public:
+  DeltaEntry (void);
+  DeltaEntry (int n);
+  ~DeltaEntry (void);
+  void correlation (Addr *candidates);
+  void filter (Addr *candidates);
+  void initialize (Addr PC, Addr last_address);
+  void insert (Addr current_address);
+
+  Addr pc() const { return _pc; };
+  Addr last_address() const { return _last_address; };
+};
 
 DeltaEntry::DeltaEntry () :
   _pc(0),
@@ -199,6 +216,42 @@ void DeltaEntry::insert (Addr current_address)
     _delta_index = 0;
   }
 }
+
+///////////////////////////
+////// Prefetcher   ///////
+///////////////////////////
+
+Addr prefetch_queue[32]; // Size taken from paper by Grannæs et al.
+int prefetch_queue_pos = 0;
+
+bool in_prefetch_queue(Addr address) {
+  for (int i = 0; i < 32; i++)
+  {
+    if (prefetch_queue[i] == address)
+	{
+      return true;
+    }
+  }
+  return false;
+}
+
+void prepare_prefetch(Addr address)
+{
+  for (int i = 0; i < 32; i++)
+  {
+    if (prefetch_queue[i] == 0)
+	  {
+      prefetch_queue_pos = i;
+	  }
+  }
+  prefetch_queue[prefetch_queue_pos++] = address; 
+  if (prefetch_queue_pos == 32)
+  {
+    prefetch_queue_pos--;
+  }
+}
+
+
 
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
