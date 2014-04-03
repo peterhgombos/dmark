@@ -1,15 +1,18 @@
 \section{Introduction}
 
-% Usikker på hvor denne passer inn, men tenkte å drodle ideer for å komme igang:
+% Usikker på hvor denne passer inn, men tenkte å drodle ideer for å komme
+% igang:
 \IEEEPARstart{T}{he} 2013 paper by Sømåen et. al~\cite{Somaen} mentions several
-interesting avenues for further research and improvement in DCPT-based~\footnotemark[1]
-prefetching: First of all, the possibility that "a large full size buffer would be
-more useful for the parts of the program that generate proper deltas" might be
-something to look into, if the TDCPT-scheme can be used as a hybrid system that 
-changes it's tiers dynamically, depending on the degree of reuse in it's tier 3,
-it is possible that we could regain some of the benefits found in pure DCPT, while
-also keeping some degree of gain in the parts that would not benefit from such a
-large buffer, but instead from not flushing the patterns too soon.
+interesting avenues for further research and improvement in
+DCPT-based~\footnotemark[1] prefetching. Among these it mentions the
+possibility that "a large full size buffer would be more useful for the parts
+of the program that generate proper deltas". As a follow-up, this paper
+investigates the potential benefits of a hybrid scheme that switches between a
+two-tiered TDCPT scheme and ordinary DCPT on demand. Depending on the degree of
+reuse in it's tier 3, it is possible that some of the benefits found in pure
+DCPT might be retained. Potentially, this would also have the benefit of
+enhancing performance in sections that would not benefit from such a large
+buffer, but where longer pattern lifetime is of greater benefit.
 
 \footnotetext[1]{Delta-Correlating Prediction Table}
 
