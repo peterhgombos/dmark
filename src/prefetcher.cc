@@ -201,7 +201,7 @@ void DeltaEntry::insert (Addr current_address)
 }
 
 int lru_index = 0;
-DeltaEntry entries[TABLE_SIZE];
+std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
