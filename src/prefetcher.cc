@@ -5,6 +5,7 @@
  */
 
 #include <vector>
+#include <climits>
 
 #include "interface.hh"
 
@@ -24,7 +25,6 @@ typedef int16_t delta_t;
 
 // Global counting of hits //
 int64_t t1_hit = 0;
-int64_t t3_hit = 0; 
 int64_t prefetch_count = 0; 
 
 ///////////////////////////
@@ -290,11 +290,6 @@ void switch_mode_to(bufferMode mode)
     return;
   }
 
-  /* Zero the hit counters */
-  t1_hit = 0;
-  t3_hit = 0;
-  prefetch_count = 0;
-
   if (gBufferMode == TIER3_ONLY && mode == TIERED)
   {
     // Ready the t1-buffer.
@@ -408,9 +403,19 @@ void prefetch_init(void)
 
 void prefetch_access(AccessStat stat)
 {
-  prefetch_count++;
+  if (prefetch_count != LLONG_MAX)
+  {
+    prefetch_count++;
+  }
+  else
+  {
+    prefetch_count =<< 32;
+    t1_hit =<< 32;
+  }
+
+
   //DPRINTF(HWPrefetch, "Prefetch Access PC: %d Addr: %d Prefetch_count: %d LRU-index: %d\n", stat.pc, stat.mem_addr, prefetch_count, lru_index);
-  DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d t3_hit: %d prefetch_count: %d ratiot1: %f ratiot3: %f\n", stat.pc, t1_hit, t3_hit, prefetch_count, ((double)t1_hit/prefetch_count), ((double)t3_hit/prefetch_count));
+  DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d prefetch_count: %d ratiot1: %f ratiot3: %f\n", stat.pc, t1_hit, prefetch_count, ((double)t1_hit/prefetch_count), ((double)t3_hit/prefetch_count));
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
@@ -434,8 +439,10 @@ void prefetch_access(AccessStat stat)
       /* Entry is new (not in either) */
       else
       {
-       DPRINTF(HWPrefetch, "Entry is new, not in either\n");
-       t1Entry->initialize(stat.pc, curr_addr);
+        t1_hit++;
+
+        DPRINTF(HWPrefetch, "Entry is new, not in either\n");
+        t1Entry->initialize(stat.pc, curr_addr);
       }
     } 
     // We are in TIER3_ONLY-mode, and thus we must modify T3 directly without T1.
@@ -444,7 +451,7 @@ void prefetch_access(AccessStat stat)
       t1_hit++;
 
       /* Switch mode from tier 3 only to tiered */
-      if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count > (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
+      if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count > BUFFER_TOLERANCE))
       {
         DPRINTF(HWPrefetch, "Switching mode to Tiered t1_hit: %d prefetch_count: %d ratio: %f\n", t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
         switch_mode_to(TIERED);
@@ -463,7 +470,7 @@ void prefetch_access(AccessStat stat)
   {
     t3_hit++;
     /* Switch mode from tiered to tier 3 only */
-    if ((gBufferMode == TIERED) && (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE))
+    if ((gBufferMode == TIERED) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
     {
         DPRINTF(HWPrefetch, "Switching mode to Tier3-only t3_hit: %d prefetch_count: %d ratio: %f\n", t3_hit, prefetch_count, ((double)t3_hit/prefetch_count));
         switch_mode_to(TIER3_ONLY);
