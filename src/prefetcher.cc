@@ -38,6 +38,7 @@ private:
   int _size;
 
 public:
+  ~DeltaArray () { delete[] _arr; }
   DeltaArray (int n);
   DeltaArray (const DeltaArray &rhs);
   DeltaArray& operator= (const DeltaArray &rhs);
