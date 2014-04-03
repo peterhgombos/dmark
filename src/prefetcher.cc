@@ -279,7 +279,7 @@ enum bufferMode
 };
 
 
-int gCurrentTier3Size = TABLE_SIZE - TIER1_SIZE;
+int gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
 int gCurrentTier1Size = TIER1_SIZE; 
 
 bufferMode gBufferMode = TIERED;
@@ -451,7 +451,6 @@ void prefetch_access(AccessStat stat)
         switch_mode_to(TIERED);
         Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
         t1Entry->initialize(stat.pc, curr_addr);
-        entry->initialize(stat.pc, curr_addr);
       }
       else
       {
