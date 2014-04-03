@@ -364,7 +364,7 @@ void switch_mode_to(bufferMode mode)
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
-	for (int i = 0; i < TABLE_SIZE; i++)
+	for (int i = 0; i < gCurrentTier3Size; i++)
     {
 		if (entries[i].pc() == pc)
         {
@@ -372,7 +372,7 @@ DeltaEntry* locate_entry_for_pc(Addr pc)
 		}
 	}
 
-	if (lru_index == TABLE_SIZE)
+	if (lru_index == gCurrentTier3Size)
     {
 		lru_index = 0;
 	}
@@ -418,17 +418,25 @@ void prefetch_access(AccessStat stat)
   /* Entry is not in T3 */
   if (stat.pc != entry->pc())
   {
-    Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
+    /* We are in TIERED-mode, use T1 for initial-attempts */ 
+    if (gBufferMode == TIERED) {
+      Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
 
-    /* Entry is already in T1, and should be upgraded to T3 */
-    if (stat.pc == t1Entry->pc())
-    {
-      entry->initialize(stat.pc, t1Entry->last_address());
-      entry->insert(curr_addr);
-      t1Entry->initialize(0, 0);
-    }
-    /* Entry is new (not in either) */
-    else
+     /* Entry is already in T1, and should be upgraded to T3 */
+      if (stat.pc == t1Entry->pc())
+      {
+        entry->initialize(stat.pc, t1Entry->last_address());
+        entry->insert(curr_addr);
+        t1Entry->initialize(0, 0);
+      }
+      /* Entry is new (not in either) */
+      else
+      {
+       t1Entry->initialize(stat.pc, curr_addr);
+      }
+    } 
+    // We are in TIER3_ONLY-mode, and thus we must modify T3 directly without T1.
+    else  
     {
       t1_hit++;
 
@@ -436,9 +444,15 @@ void prefetch_access(AccessStat stat)
       if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
       {
         DPRINTF(HWPrefetch, "Switching mode to Tiered");
-        //switch_mode_to(TIERED);
+        switch_mode_to(TIERED);
+        Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
+        t1Entry->initialize(stat.pc, curr_addr);
+        entry->initialize(stat.pc, curr_addr);
       }
-      t1Entry->initialize(stat.pc, curr_addr);
+      else
+      {
+        entry->initialize(stat.pc, curr_addr);
+      }
     }
   }
   /* Entry is already in T3 */
@@ -449,7 +463,7 @@ void prefetch_access(AccessStat stat)
     if ((gBufferMode == TIERED) && (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE))
     {
         DPRINTF(HWPrefetch, "Switching mode to Tier3-only");
-        //switch_mode_to(TIER3_ONLY);
+        switch_mode_to(TIER3_ONLY);
     }
     entry->insert(curr_addr);
     entry->correlation(candidates);
