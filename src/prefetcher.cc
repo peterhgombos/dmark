@@ -7,8 +7,6 @@
 #include <vector>
 
 #include "interface.hh"
-#include "DeltaEntry.hh"
-#include "DeltaArray.hh"
 
 #define TABLE_SIZE 60
 #define NUM_DELTAS 20
@@ -30,7 +28,7 @@ private:
 
 public:
   DeltaArray (int n);
-  delta_t get(int index) { return (*this)[index] }
+  delta_t get(int index) { return (*this)[index]; }
   delta_t& operator[](int index);
   void zero(void);
 };
