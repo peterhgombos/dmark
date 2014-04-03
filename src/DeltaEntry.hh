@@ -9,7 +9,7 @@
 class DeltaEntry
 {
 private:
-  Addr _PC;
+  Addr _pc;
   Addr _last_address;
   Addr _last_prefetch;
   DeltaArray _data;
@@ -24,8 +24,9 @@ public:
   void filter (Addr *candidates);
   void initialize (Addr PC, Addr last_address);
   void insert (Addr current_address);
-  Addr getPC (void);
-  Addr getLastAddress (void);
+
+  Addr pc() const { return _pc; };
+  Addr last_address() const { return _last_address; };
 };
 
 #endif /* __DELTA_ENTRY_ */

@@ -82,7 +82,7 @@ void DeltaArray::zero (void)
 }
 
 DeltaEntry::DeltaEntry () :
-  _PC(0),
+  _pc(0),
   _last_address(0),
   _last_prefetch(0),
   _data(NUM_DELTAS),
@@ -91,7 +91,7 @@ DeltaEntry::DeltaEntry () :
 {}
 
 DeltaEntry::DeltaEntry (int n) :
-  _PC(0),
+  _pc(0),
   _last_address(0),
   _last_prefetch(0),
   _data(n),
@@ -180,9 +180,9 @@ void DeltaEntry::filter (Addr *candidates)
   }
 }
 
-void DeltaEntry::initialize (Addr PC, Addr last_address)
+void DeltaEntry::initialize (Addr pc, Addr last_address)
 {
-  _PC = PC;
+  _pc = pc;
   _last_address = last_address;
 
   _data.zero();
@@ -199,23 +199,13 @@ void DeltaEntry::insert (Addr current_address)
   }
 }
 
-Addr DeltaEntry::getPC ()
-{
-  return _PC;
-}
-
-Addr DeltaEntry::getLastAddress ()
-{
-  return _last_address;
-}
-
 int lru_index = 0;
 DeltaEntry entries[TABLE_SIZE];
 
-DeltaEntry* locate_entry_for_PC(Addr PC)
+DeltaEntry* locate_entry_for_pc(Addr pc)
 {
 	for (int i = 0; i < TABLE_SIZE; i++) {
-		if (entries[i].getPC() == PC) {
+		if (entries[i].pc() == pc) {
 			return &(entries[i]);
 		}
 	}
@@ -240,15 +230,15 @@ void prefetch_access(AccessStat stat)
 {
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
-  DeltaEntry *entry = locate_entry_for_PC(stat.pc);
+  DeltaEntry *entry = locate_entry_for_pc(stat.pc);
   Addr candidates[NUM_DELTAS*10];
 
   // From pseudocode in paper (Grannæs et al, Algorithm 1)
-  if (stat.pc != entry->getPC())
+  if (stat.pc != entry->pc())
   {
       entry->initialize(stat.pc, curr_addr);
   }
-  else if (curr_addr - entry->getLastAddress() != 0)
+  else if (curr_addr - entry->last_address() != 0)
   {
       entry->insert(curr_addr);
       entry->correlation(candidates);
