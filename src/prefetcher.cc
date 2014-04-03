@@ -215,12 +215,14 @@ void DeltaEntry::insert (Addr current_address)
   }
 }
 
-class Tier1Entry {
+class Tier1Entry
+{
   Addr _PC;
   Addr _last_address;
 public:
   Tier1Entry() { initialize(0, 0); }
-  void initialize(Addr PC, Addr address) {
+  void initialize(Addr PC, Addr address)
+  {
     _PC = PC;
     _last_address = address;
   }
@@ -232,7 +234,8 @@ public:
 ////// Prefetcher   ///////
 ///////////////////////////
 
-enum bufferMode {
+enum bufferMode
+{
   TIERED,
   TIER3_ONLY
 };
@@ -249,10 +252,13 @@ std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
 
 void switch_mode_to(bufferMode mode) 
 {
+  const int num_to_compress = TIER3_REDUCTION;
+
   if (mode == gBufferMode)
   {
     return;
   }
+
   if (gBufferMode == TIER3_ONLY && mode == TIERED)
   {
     // Ready the t1-buffer.
@@ -261,7 +267,6 @@ void switch_mode_to(bufferMode mode)
       t1Entries[i].initialize(0, 0);
     }
     // We need to compress some elements down to their tiered equivalent.
-    int num_to_compress = TIER3_REDUCTION;
     for (int i = 0; i < num_to_compress; i++)
     {
       DeltaEntry *to_compress = &(entries[lru_index++]);
@@ -271,6 +276,7 @@ void switch_mode_to(bufferMode mode)
       t1Entries[i].initialize(to_compress->pc(), to_compress->last_address());
       to_compress->initialize(0, 0);
     }
+
     // Now actually compress the buffer:
     for (int i = TABLE_SIZE - 1; i >= 0; i--)
     {
@@ -291,7 +297,6 @@ void switch_mode_to(bufferMode mode)
     gBufferMode = TIERED;
     gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
     gCurrentTier1Size = TIER1_SIZE;
-    
   }
   else if (gBufferMode == TIERED && mode == TIER3_ONLY)
   {
@@ -316,19 +321,25 @@ void switch_mode_to(bufferMode mode)
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
-	for (int i = 0; i < TABLE_SIZE; i++) {
-		if (entries[i].pc() == pc) {
+	for (int i = 0; i < TABLE_SIZE; i++)
+    {
+		if (entries[i].pc() == pc)
+        {
 			return &(entries[i]);
 		}
 	}
-	if (lru_index == TABLE_SIZE) {
+
+	if (lru_index == TABLE_SIZE)
+    {
 		lru_index = 0;
 	}
+
 	return &(entries[lru_index++]);
 }
 
 Tier1Entry* locate_tier1_for_pc(Addr pc)
 {
+  /* Loop through all T1 items */
   for (int i = 0; i < TIER1_SIZE; i++) 
   {
     if (t1Entries[i].pc() == pc) 
@@ -336,9 +347,12 @@ Tier1Entry* locate_tier1_for_pc(Addr pc)
       return &(t1Entries[i]);
     }
   }
-  if (tier1_index == TIER1_SIZE) {
+
+  if (tier1_index == TIER1_SIZE)
+  {
     tier1_index = 0;
   }
+
   return &(t1Entries[tier1_index++]);
 }
 
@@ -358,33 +372,33 @@ void prefetch_access(AccessStat stat)
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
   Addr candidates[NUM_DELTAS];
 
-  // From pseudocode in paper (Grannæs et al, Algorithm 1)
+  /* Entry is not in T3 */
   if (stat.pc != entry->pc())
   {
     Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
-    if (stat.pc == t1Entry->pc()) {
-      // Upgrade the tier1-entry to a tier3-entry
+
+    /* Entry is already in T1, and should be upgraded to T3 */
+    if (stat.pc == t1Entry->pc())
+    {
       entry->initialize(stat.pc, t1Entry->last_address());
       entry->insert(curr_addr);
-      // Remove the entry from Tier 1
       t1Entry->initialize(0, 0);
-    } else {
+    }
+    /* Entry is new (not in either) */
+    else
+    {
       t1Entry->initialize(stat.pc, curr_addr);
     }
   }
+  /* Entry is already in T3 */
   else if (curr_addr - entry->last_address() != 0)
   {
-    // Hit in t3
     t3_hit++;
-    // IF IN MIXED  MODE
-    if (gBufferMode == TIERED)
+    /* Switch mode from tiered to tier 3 only */
+    if ((gBufferMode == TIERED) && (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE))
     {
-      if (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE)
-      {
-        // SWITCH BUFFER MODE (only t3)
         DPRINTF(HWPrefetch, "Switching mode to Tier3-only");
         switch_mode_to(TIER3_ONLY);
-      }
     }
     entry->insert(curr_addr);
     entry->correlation(candidates);
