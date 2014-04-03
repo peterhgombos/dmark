@@ -16,6 +16,53 @@ according to Sømåen et al).
 
 % TODO: Something about how it failed
 
+\begin{algorithm}
+\footnotesize
+\caption{Original DCPT \cite{Grannaes481837}}
+  \begin{algorithmic}[1]
+    \Procedure{DCPT}{Load address $PC$, Miss address $addr$}
+      \State $r \gets \Call{TableLookUp}{PC}$ \\
+
+      \If {$entry.pc \neq PC$}
+        \State $entry.pc \gets PC$
+        \State $entry.lastAddress \gets addr$
+        \State $entry.deltas[\;] \gets \emptyset$
+        \State $entry.lastPrefetch \gets 0$
+      \ElsIf {$addr - entry.lastAddress \neq 0$}
+        \State $entry.deltas[\;] \gets addr - entry.lastAddress$
+        \State $entry.lastAddress \gets addr$ \\
+
+        \State $candidates[\;] \gets \Call{DeltaCorrelation}{entry}$
+        \State $prefetches[\;] \gets \Call{PrefetchFilter}{entry, candidates[\:]}$
+        \State $\Call{IssuePrefetches}{prefetches[\:]}$
+      \EndIf
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\footnotesize
+\caption{Original DCPT}
+  \begin{algorithmic}[1]
+    \Procedure{DCPT}{Load address $PC$, Miss address $addr$} \\
+      \State $r \gets \Call{TableLookUp}{PC}$
+
+      \If {$entry.pc \neq PC$}
+        \State $entry.pc \gets PC$
+        \State $entry.lastAddress \gets addr$
+        \State $entry.deltas[\;] \gets \emptyset$
+        \State $entry.lastPrefetch \gets 0$
+      \ElsIf {$addr - entry.lastAddress \neq 0$}
+        \State $entry.deltas[\;] \gets addr - entry.lastAddress$
+        \State $entry.lastAddress \gets addr$ \\
+
+        \State $candidates[\;] \gets \Call{DeltaCorrelation}{entry}$
+        \State $prefetches[\;] \gets \Call{PrefetchFilter}{entry, candidates[\:]}$
+        \State $\Call{IssuePrefetches}{prefetches[\:]}$
+      \EndIf
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
 
 \subsection{Prefetcher Description}
 
