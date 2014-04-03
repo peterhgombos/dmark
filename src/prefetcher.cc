@@ -37,7 +37,7 @@ DeltaArray::DeltaArray (int n) :
   _arr(NULL),
   _size(n)
 {
-  _arr = new int16_t[n];
+  _arr = new delta_t[n];
 
   for (int i = 0; i < n; i++)
   {
