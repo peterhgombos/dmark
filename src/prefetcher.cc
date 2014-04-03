@@ -9,6 +9,7 @@
 #include "interface.hh"
 
 #define TABLE_SIZE 60
+#define TIER1_SIZE 92
 #define NUM_DELTAS 20
 
 typedef int16_t delta_t;
@@ -83,7 +84,6 @@ private:
 public:
   DeltaEntry (void);
   DeltaEntry (int n);
-  ~DeltaEntry (void);
   void correlation (Addr *candidates);
   void filter (Addr *candidates);
   void initialize (Addr PC, Addr last_address);
@@ -110,8 +110,6 @@ DeltaEntry::DeltaEntry (int n) :
   _data_size(n),
   _delta_index(0)
 {}
-
-DeltaEntry::~DeltaEntry () {}
 
 void DeltaEntry::correlation (Addr *candidates)
 {
@@ -206,12 +204,27 @@ void DeltaEntry::insert (Addr current_address)
   }
 }
 
+class Tier1Entry {
+  Addr _PC;
+  Addr _last_address;
+public:
+  Tier1Entry() { initialize(0, 0); }
+  void initialize(Addr PC, Addr address) {
+    _PC = PC;
+    _last_address = address;
+  }
+  Addr pc() { return _PC; }
+  Addr get_last_address() { return _last_address; }
+};
+
 ///////////////////////////
 ////// Prefetcher   ///////
 ///////////////////////////
 
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
+int tier1_index = 0;
+std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
@@ -224,6 +237,21 @@ DeltaEntry* locate_entry_for_pc(Addr pc)
 		lru_index = 0;
 	}
 	return &(entries[lru_index++]);
+}
+
+Tier1Entry* locate_tier1_for_pc(Addr pc)
+{
+  for (int i = 0; i < TIER1_SIZE; i++) 
+  {
+    if (t1Entries[i].pc() == pc) 
+    {
+      return &(t1Entries[i]);
+    }
+  }
+  if (tier1_index == TIER1_SIZE) {
+    tier1_index = 0;
+  }
+  return &(t1Entries[tier1_index++]);
 }
 
 void prefetch_init(void)
@@ -243,13 +271,22 @@ void prefetch_access(AccessStat stat)
   // From pseudocode in paper (Grannæs et al, Algorithm 1)
   if (stat.pc != entry->pc())
   {
-      entry->initialize(stat.pc, curr_addr);
+    Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
+    if (stat.pc == t1Entry->pc()) {
+      // Upgrade the tier1-entry to a tier2-entry
+      entry->initialize(stat.pc, t1Entry->get_last_address());
+      entry->insert(curr_addr);
+      // Remove the entry from Tier 1
+      t1Entry->initialize(0, 0);
+    } else {
+      t1Entry->initialize(stat.pc, curr_addr);
+    }
   }
   else if (curr_addr - entry->last_address() != 0)
   {
-      entry->insert(curr_addr);
-      entry->correlation(candidates);
-      entry->filter(candidates);
+    entry->insert(curr_addr);
+    entry->correlation(candidates);
+    entry->filter(candidates);
   }
 }
 
