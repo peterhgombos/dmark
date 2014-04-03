@@ -348,7 +348,7 @@ void prefetch_access(AccessStat stat)
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
-  Addr candidates[NUM_DELTAS*10];
+  Addr candidates[NUM_DELTAS];
 
   // From pseudocode in paper (Grannæs et al, Algorithm 1)
   if (stat.pc != entry->pc())
