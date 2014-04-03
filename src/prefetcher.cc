@@ -8,9 +8,14 @@
 
 #include "interface.hh"
 
-#define TABLE_SIZE 60
-#define TIER1_SIZE 92
-#define NUM_DELTAS 20
+#define TABLE_SIZE 73 // The full table size, including the Tier1-elements if in Tiered mode.
+#define TIER1_SIZE 91
+#define NUM_DELTAS 23
+// These should in _theory_ be sizeofs, but since Addr is larger than what we actually need, we just lie
+#define TIER1_ENTRY_SIZE 8
+#define TIER3_ENTRY_SIZE (8+4+NUM_DELTAS*2+1)
+#define TIER3_RATIO (TIER3_ENTRY_SIZE/TIER1_ENTRY_SIZE) // Make sure this is an integral ratio.
+#define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
 typedef int16_t delta_t;
 
@@ -214,17 +219,94 @@ public:
     _last_address = address;
   }
   Addr pc() { return _PC; }
-  Addr get_last_address() { return _last_address; }
+  Addr last_address() { return _last_address; }
 };
 
 ///////////////////////////
 ////// Prefetcher   ///////
 ///////////////////////////
 
+enum bufferMode {
+  TIERED,
+  TIER3_ONLY
+};
+
+
+int gCurrentTier3Size = TABLE_SIZE - TIER1_SIZE;
+int gCurrentTier1Size = TIER1_SIZE; 
+
+bufferMode gBufferMode = TIERED;
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 int tier1_index = 0;
 std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
+
+void switchModeTo(bufferMode mode) 
+{
+  if (mode == gBufferMode)
+  {
+    return;
+  }
+  if (gBufferMode == TIER3_ONLY && mode == TIERED)
+  {
+    // Ready the t1-buffer.
+    for (int i = 0; i < TIER1_SIZE; i++)
+    {
+      t1Entries[i].initialize(0, 0);
+    }
+    // We need to compress some elements down to their tiered equivalent.
+    int num_to_compress = TIER3_REDUCTION;
+    for (int i = 0; i < num_to_compress; i++)
+    {
+      DeltaEntry *to_compress = &(entries[lru_index++]);
+      if (lru_index == TABLE_SIZE) {
+        lru_index = 0;
+      }
+      t1Entries[i].initialize(to_compress->pc(), to_compress->last_address());
+      to_compress->initialize(0, 0);
+    }
+    // Now actually compress the buffer:
+    for (int i = TABLE_SIZE - 1; i >= 0; i--)
+    {
+      if (num_to_compress == 0)
+      {
+        break;
+      }
+      if (entries[i].pc() == 0)
+      {
+        for (int j = i; j < TABLE_SIZE - 2; j++)
+        {
+          entries[j] = entries[j + 1];
+        }
+        num_to_compress--;
+      }
+    }
+
+    gBufferMode = TIERED;
+    gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
+    gCurrentTier1Size = TIER1_SIZE;
+    
+  }
+  else if (gBufferMode == TIERED && mode == TIER3_ONLY)
+  {
+    // Simulate expansion, this will potentially have some issues with the lru-position
+    int num_to_decompress = TIER3_REDUCTION;
+    for (int i = 0; i < num_to_decompress; i++) 
+    {
+      int offset = TABLE_SIZE - TIER3_REDUCTION + i;
+      entries[offset].initialize(t1Entries[tier1_index].pc(), t1Entries[tier1_index].last_address());
+      if (tier1_index == 0) 
+      {
+        tier1_index = TIER1_SIZE - 1;
+      } else {
+        tier1_index--;
+      }
+    }
+    gBufferMode = TIER3_ONLY;
+    gCurrentTier3Size = TABLE_SIZE;
+    gCurrentTier1Size = 0;
+  }
+}
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
@@ -274,7 +356,7 @@ void prefetch_access(AccessStat stat)
     Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
     if (stat.pc == t1Entry->pc()) {
       // Upgrade the tier1-entry to a tier2-entry
-      entry->initialize(stat.pc, t1Entry->get_last_address());
+      entry->initialize(stat.pc, t1Entry->last_address());
       entry->insert(curr_addr);
       // Remove the entry from Tier 1
       t1Entry->initialize(0, 0);
