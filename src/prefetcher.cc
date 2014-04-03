@@ -18,10 +18,12 @@
 #define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
 #define BUFFER_TOLERANCE 0.70
+#define BUFFER_DEADZONE 0.10
 
 typedef int16_t delta_t;
 
 // Global counting of hits //
+int64_t t1_hit = 0;
 int64_t t3_hit = 0; 
 int64_t prefetch_count = 0; 
 
@@ -295,6 +297,11 @@ void switch_mode_to(bufferMode mode)
     return;
   }
 
+  /* Zero the hit counters */
+  t1_hit = 0;
+  t3_hit = 0;
+  prefetch_count = 0;
+
   if (gBufferMode == TIER3_ONLY && mode == TIERED)
   {
     // Ready the t1-buffer.
@@ -423,6 +430,14 @@ void prefetch_access(AccessStat stat)
     /* Entry is new (not in either) */
     else
     {
+      t1_hit++;
+
+      /* Switch mode from tier 3 only to tiered */
+      if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
+      {
+        DPRINTF(HWPrefetch, "Switching mode to Tiered");
+        //switch_mode_to(TIERED);
+      }
       t1Entry->initialize(stat.pc, curr_addr);
     }
   }
@@ -434,7 +449,7 @@ void prefetch_access(AccessStat stat)
     if ((gBufferMode == TIERED) && (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE))
     {
         DPRINTF(HWPrefetch, "Switching mode to Tier3-only");
-        switch_mode_to(TIER3_ONLY);
+        //switch_mode_to(TIER3_ONLY);
     }
     entry->insert(curr_addr);
     entry->correlation(candidates);
