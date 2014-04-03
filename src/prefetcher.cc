@@ -348,10 +348,10 @@ void switch_mode_to(bufferMode mode)
         num_to_compress--;
       }
     }
-    lru_index = 0;
     gBufferMode = TIERED;
     gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
     gCurrentTier1Size = TIER1_SIZE;
+    lru_index = lru_index % gCurrentTier3Size;
   }
   else if (gBufferMode == TIERED && mode == TIER3_ONLY)
   {
