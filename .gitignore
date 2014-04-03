@@ -23,6 +23,7 @@
 *.hex
 
 # Latex
+*.brf
 *.aux
 *.glo
 *.idx
