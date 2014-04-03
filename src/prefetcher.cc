@@ -24,7 +24,7 @@ bool in_prefetch_queue(Addr address) {
   return false;
 }
 
-void perform_prefetch(Addr address)
+void prepare_prefetch(Addr address)
 {
   for (int i = 0; i < 32; i++)
   {
@@ -34,7 +34,6 @@ void perform_prefetch(Addr address)
 	}
   }
   prefetch_queue[prefetch_queue_pos++] = address; 
-  issue_prefetch(address);
   if (prefetch_queue_pos == 32)
   {
     prefetch_queue_pos--;
@@ -147,18 +146,37 @@ void DeltaEntry::correlation (Addr *candidates)
 
 void DeltaEntry::filter (Addr *candidates)
 {
+  Addr toBePrefetched[NUM_DELTAS] = {0};
+  int index = 0;
   for (int i = 0; i < _data_size; i++)
   {
     if (candidates[i] == 0)
     {
-      return;
+      break;
     }
 
+    if (_last_prefetch == candidates[i]) 
+	{
+      index = 0;
+      toBePrefetched[0] = 0;
+	}
     if (!in_cache(candidates[i]) && !in_mshr_queue(candidates[i]) && !in_prefetch_queue(candidates[i]))
     {
-      perform_prefetch(candidates[i]);
+      prepare_prefetch(candidates[i]);
+	  toBePrefetched[index++] = candidates[i];
+      _last_prefetch = candidates[i];
     }
-    _last_prefetch = candidates[i];
+  }
+  for (int i = 0; i < NUM_DELTAS; i++) 
+  {
+    if (toBePrefetched[i] != 0)
+	{
+      issue_prefetch(toBePrefetched[i]);
+	} 
+	else 
+	{
+	  break;
+	}
   }
 }
 
