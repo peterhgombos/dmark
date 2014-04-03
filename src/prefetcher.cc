@@ -288,7 +288,7 @@ std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
 
 void switch_mode_to(bufferMode mode) 
 {
-  const int num_to_compress = TIER3_REDUCTION;
+  int num_to_compress = TIER3_REDUCTION;
 
   if (mode == gBufferMode)
   {
