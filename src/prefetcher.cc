@@ -17,7 +17,14 @@
 #define TIER3_RATIO (TIER3_ENTRY_SIZE/TIER1_ENTRY_SIZE) // Make sure this is an integral ratio.
 #define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
+#define BUFFER_TOLERANCE 0.70
+#define MODE_TOLERANCE 0.70
+
 typedef int16_t delta_t;
+
+// Global counting of hits //
+int64_t t3_hit = 0; 
+int64_t prefetch_count = 0; 
 
 ///////////////////////////
 ////// DeltaArray   ///////
@@ -345,6 +352,8 @@ void prefetch_init(void)
 
 void prefetch_access(AccessStat stat)
 {
+  prefetch_count++;
+
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
@@ -355,7 +364,7 @@ void prefetch_access(AccessStat stat)
   {
     Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
     if (stat.pc == t1Entry->pc()) {
-      // Upgrade the tier1-entry to a tier2-entry
+      // Upgrade the tier1-entry to a tier3-entry
       entry->initialize(stat.pc, t1Entry->last_address());
       entry->insert(curr_addr);
       // Remove the entry from Tier 1
@@ -366,6 +375,16 @@ void prefetch_access(AccessStat stat)
   }
   else if (curr_addr - entry->last_address() != 0)
   {
+    // Hit in t3
+    t3_hit++;
+    // IF IN MIXED  MODE
+    if (gBufferMode == TIERED)
+    {
+      if (t3_hit / prefetch_count > BUFFER_TOLERANCE)
+      {
+        // SWITCH BUFFER MODE (only t3)
+      }
+    }
     entry->insert(curr_addr);
     entry->correlation(candidates);
     entry->filter(candidates);
