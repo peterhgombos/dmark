@@ -379,7 +379,7 @@ void prefetch_access(AccessStat stat)
     // IF IN MIXED  MODE
     if (gBufferMode == TIERED)
     {
-      if (t3_hit / prefetch_count > BUFFER_TOLERANCE)
+      if (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE)
       {
         // SWITCH BUFFER MODE (only t3)
         DPRINTF(HWPrefetch, "Switching mode to Tier3-only");
