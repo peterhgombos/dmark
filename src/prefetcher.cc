@@ -409,13 +409,13 @@ void prefetch_access(AccessStat stat)
   }
   else
   {
-    prefetch_count =<< 32;
-    t1_hit =<< 32;
+    prefetch_count <<= 32;
+    t1_hit <<= 32;
   }
 
 
   //DPRINTF(HWPrefetch, "Prefetch Access PC: %d Addr: %d Prefetch_count: %d LRU-index: %d\n", stat.pc, stat.mem_addr, prefetch_count, lru_index);
-  DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d prefetch_count: %d ratiot1: %f ratiot3: %f\n", stat.pc, t1_hit, prefetch_count, ((double)t1_hit/prefetch_count), ((double)t3_hit/prefetch_count));
+  DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d prefetch_count: %d ratiot1: %f\n", stat.pc, t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
@@ -468,11 +468,10 @@ void prefetch_access(AccessStat stat)
   /* Entry is already in T3 */
   else if (curr_addr - entry->last_address() != 0)
   {
-    t3_hit++;
     /* Switch mode from tiered to tier 3 only */
     if ((gBufferMode == TIERED) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
     {
-        DPRINTF(HWPrefetch, "Switching mode to Tier3-only t3_hit: %d prefetch_count: %d ratio: %f\n", t3_hit, prefetch_count, ((double)t3_hit/prefetch_count));
+        DPRINTF(HWPrefetch, "Switching mode to Tier3-only t1_hit: %d prefetch_count: %d ratio: %f\n", t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
         switch_mode_to(TIER3_ONLY);
     }
     entry->insert(curr_addr);
