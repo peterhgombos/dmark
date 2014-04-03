@@ -10,6 +10,37 @@
 #include "DeltaEntry.hh"
 #include "DeltaArray.hh"
 
+Addr prefetch_queue[32]; // Size taken from paper by Grannæs et al.
+int prefetch_queue_pos = 0;
+
+bool in_prefetch_queue(Addr address) {
+  for (int i = 0; i < 32; i++)
+  {
+    if (prefetch_queue[i] == address)
+	{
+      return true;
+    }
+  }
+  return false;
+}
+
+void prepare_prefetch(Addr address)
+{
+  for (int i = 0; i < 32; i++)
+  {
+    if (prefetch_queue[i] == 0)
+	  {
+      prefetch_queue_pos = i;
+	  }
+  }
+  prefetch_queue[prefetch_queue_pos++] = address; 
+  if (prefetch_queue_pos == 32)
+  {
+    prefetch_queue_pos--;
+  }
+}
+
+
 DeltaArray::DeltaArray (int n) :
   _arr(NULL),
   _size(n)
@@ -51,7 +82,7 @@ void DeltaArray::zero (void)
 }
 
 DeltaEntry::DeltaEntry () :
-  _PC(0),
+  _pc(0),
   _last_address(0),
   _last_prefetch(0),
   _data(NUM_DELTAS),
@@ -60,7 +91,7 @@ DeltaEntry::DeltaEntry () :
 {}
 
 DeltaEntry::DeltaEntry (int n) :
-  _PC(0),
+  _pc(0),
   _last_address(0),
   _last_prefetch(0),
   _data(n),
@@ -87,7 +118,6 @@ void DeltaEntry::correlation (Addr *candidates)
     delta_t u, v;
     u = _data[i - 1];
     v = _data[i];
-
     if (u == d1 && v == d2)
     {
       int k = i;
@@ -111,29 +141,49 @@ void DeltaEntry::correlation (Addr *candidates)
       }
       break;
     }
+	break;
   }
 }
 
 void DeltaEntry::filter (Addr *candidates)
 {
+  Addr toBePrefetched[NUM_DELTAS] = {0};
+  int index = 0;
   for (int i = 0; i < _data_size; i++)
   {
     if (candidates[i] == 0)
     {
-      return;
+      break;
     }
 
-    if (!in_cache(candidates[i]))
+    if (_last_prefetch == candidates[i]) 
+	{
+      index = 0;
+      toBePrefetched[0] = 0;
+	}
+    if (!in_cache(candidates[i]) && !in_mshr_queue(candidates[i]) && !in_prefetch_queue(candidates[i]))
     {
-      issue_prefetch(candidates[i]);
+      prepare_prefetch(candidates[i]);
+	  toBePrefetched[index++] = candidates[i];
+      _last_prefetch = candidates[i];
     }
-    _last_prefetch = candidates[i];
+  }
+  for (int i = 0; i < NUM_DELTAS; i++) 
+  {
+    if (toBePrefetched[i] != 0)
+	{
+      issue_prefetch(toBePrefetched[i]);
+	} 
+	else 
+	{
+	  break;
+	}
   }
 }
 
-void DeltaEntry::initialize (Addr PC, Addr last_address)
+void DeltaEntry::initialize (Addr pc, Addr last_address)
 {
-  _PC = PC;
+  _pc = pc;
   _last_address = last_address;
 
   _data.zero();
@@ -150,23 +200,13 @@ void DeltaEntry::insert (Addr current_address)
   }
 }
 
-Addr DeltaEntry::getPC ()
-{
-  return _PC;
-}
-
-Addr DeltaEntry::getLastAddress ()
-{
-  return _last_address;
-}
-
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 
-DeltaEntry* locate_entry_for_PC(Addr PC)
+DeltaEntry* locate_entry_for_pc(Addr pc)
 {
 	for (int i = 0; i < TABLE_SIZE; i++) {
-		if (entries[i].getPC() == PC) {
+		if (entries[i].pc() == pc) {
 			return &(entries[i]);
 		}
 	}
@@ -180,7 +220,10 @@ void prefetch_init(void)
 {
   /* Called before any calls to prefetch_access. */
   /* This is the place to initialize data structures. */
-
+  for (int i = 0; i < 32; i++) {
+    prefetch_queue[i] = 0;
+  }
+  prefetch_queue_pos = 0;
   DPRINTF(HWPrefetch, "Initialized sequential-on-access prefetcher\n");
 }
 
@@ -188,15 +231,15 @@ void prefetch_access(AccessStat stat)
 {
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
-  DeltaEntry *entry = locate_entry_for_PC(stat.pc);
-  Addr candidates[NUM_DELTAS];
+  DeltaEntry *entry = locate_entry_for_pc(stat.pc);
+  Addr candidates[NUM_DELTAS*10];
 
   // From pseudocode in paper (Grannæs et al, Algorithm 1)
-  if (stat.pc != entry->getPC())
+  if (stat.pc != entry->pc())
   {
       entry->initialize(stat.pc, curr_addr);
   }
-  else if (curr_addr - entry->getLastAddress() != 0)
+  else if (curr_addr - entry->last_address() != 0)
   {
       entry->insert(curr_addr);
       entry->correlation(candidates);
@@ -209,4 +252,9 @@ void prefetch_complete(Addr addr)
     /*
      * Called when a block requested by the prefetcher has been loaded.
      */
+  for (int i = 0; i < 32; i++) {
+    if (prefetch_queue[i] == addr) {
+      prefetch_queue[i] = 0;
+	  }
+  }
 }
