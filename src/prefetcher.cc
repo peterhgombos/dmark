@@ -18,7 +18,6 @@
 #define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
 #define BUFFER_TOLERANCE 0.70
-#define MODE_TOLERANCE 0.70
 
 typedef int16_t delta_t;
 
@@ -248,7 +247,7 @@ std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 int tier1_index = 0;
 std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
 
-void switchModeTo(bufferMode mode) 
+void switch_mode_to(bufferMode mode) 
 {
   if (mode == gBufferMode)
   {
@@ -383,6 +382,8 @@ void prefetch_access(AccessStat stat)
       if (t3_hit / prefetch_count > BUFFER_TOLERANCE)
       {
         // SWITCH BUFFER MODE (only t3)
+        DPRINTF(HWPrefetch, "Switching mode to Tier3-only");
+        switch_mode_to(TIER3_ONLY);
       }
     }
     entry->insert(curr_addr);
