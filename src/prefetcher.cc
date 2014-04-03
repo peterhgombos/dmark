@@ -13,9 +13,6 @@
 
 typedef int16_t delta_t;
 
-bool in_prefetch_queue(Addr address);
-void prepare_prefetch(Addr address);
-
 ///////////////////////////
 ////// DeltaArray   ///////
 ///////////////////////////
@@ -138,11 +135,6 @@ void DeltaEntry::correlation (Addr *candidates)
       int k = i;
       while (j >= 0)
       {
-        if (_data[k] > 1000)
-        {
-          break;
-        }
-
         address += _data[k];
         candidates[candidate_index++] = address;
 
@@ -172,27 +164,26 @@ void DeltaEntry::filter (Addr *candidates)
     }
 
     if (_last_prefetch == candidates[i]) 
-	{
+	  {
       index = 0;
       toBePrefetched[0] = 0;
-	}
-    if (!in_cache(candidates[i]) && !in_mshr_queue(candidates[i]) && !in_prefetch_queue(candidates[i]))
+	  }
+    if (!in_cache(candidates[i]) && !in_mshr_queue(candidates[i]))
     {
-      prepare_prefetch(candidates[i]);
-	  toBePrefetched[index++] = candidates[i];
+	    toBePrefetched[index++] = candidates[i];
       _last_prefetch = candidates[i];
     }
   }
   for (int i = 0; i < NUM_DELTAS; i++) 
   {
     if (toBePrefetched[i] != 0)
-	{
+	  {
       issue_prefetch(toBePrefetched[i]);
-	} 
-	else 
-	{
-	  break;
-	}
+	  } 
+	  else 
+	  {
+	    break;
+	  }
   }
 }
 
@@ -219,37 +210,6 @@ void DeltaEntry::insert (Addr current_address)
 ////// Prefetcher   ///////
 ///////////////////////////
 
-Addr prefetch_queue[32]; // Size taken from paper by Grannæs et al.
-int prefetch_queue_pos = 0;
-
-bool in_prefetch_queue(Addr address)
-{
-  for (int i = 0; i < 32; i++)
-  {
-    if (prefetch_queue[i] == address)
-	{
-      return true;
-    }
-  }
-  return false;
-}
-
-void prepare_prefetch(Addr address)
-{
-  for (int i = 0; i < 32; i++)
-  {
-    if (prefetch_queue[i] == 0)
-	  {
-      prefetch_queue_pos = i;
-	  }
-  }
-  prefetch_queue[prefetch_queue_pos++] = address; 
-  if (prefetch_queue_pos == 32)
-  {
-    prefetch_queue_pos--;
-  }
-}
-
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 
@@ -270,10 +230,6 @@ void prefetch_init(void)
 {
   /* Called before any calls to prefetch_access. */
   /* This is the place to initialize data structures. */
-  for (int i = 0; i < 32; i++) {
-    prefetch_queue[i] = 0;
-  }
-  prefetch_queue_pos = 0;
   DPRINTF(HWPrefetch, "Initialized sequential-on-access prefetcher\n");
 }
 
@@ -302,9 +258,4 @@ void prefetch_complete(Addr addr)
     /*
      * Called when a block requested by the prefetcher has been loaded.
      */
-  for (int i = 0; i < 32; i++) {
-    if (prefetch_queue[i] == addr) {
-      prefetch_queue[i] = 0;
-	  }
-  }
 }
