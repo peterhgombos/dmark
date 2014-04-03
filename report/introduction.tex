@@ -1,7 +1,5 @@
 \section{Introduction}
 
-% Usikker på hvor denne passer inn, men tenkte å drodle ideer for å komme
-% igang:
 \IEEEPARstart{T}{he} 2013 paper by Sømåen et. al~\cite{Somaen} mentions several
 interesting avenues for further research and improvement in
 DCPT-based~\footnotemark[1] prefetching. Among these it mentions the
@@ -16,32 +14,9 @@ buffer, but where longer pattern lifetime is of greater benefit.
 
 \footnotetext[1]{Delta-Correlating Prediction Table}
 
-%(Alternatively, we could get stale entries out earlier by reducing the size of Tier 3). 
-The paper describes that "an unweighted circular buffer could lead to loss of important
-delta patterns", and then goes on to consider adding further
-weighting information to better decide when and what to replace. A potential source
-of further information, is to collect the hit-rate for tiers 1-3, and decide based 
-those what mode to operate in (i.e. what size the buffer should be, should it fall 
-back to a proper, or 2-tiered approach?). For instance, if we have a very low
-sustained hit-rate in tier 3, then perhaps all of tier 3 should be purged, to avoid
-stale patterns in a more explicit form.
+An important detail to the hybrid scheme discussed in this paper is at what
+point the prefetcher should interchange between the two tiers. In the
+implementation it's easy to change the tolerance of the buffer, and only when
+the ratio of misses is high enough, the change happens. At exactly what point
+this limit should be is examined in this paper.
 
-Additionally, it might be worth looking into where the "bursts of instructions that
-only happen once" (Sømåen et al) comes from. Perhaps we can either create some kind
-of protection against them flushing the buffer, or if indeed they correlate better
-with a situation where the program is changing it's operation, and thus would be
-a decent way to detect that the buffer should be flushed, then that might be a
-possible improvement. A possible reasoning behind this, is that the TDCPT-scheme as
-described in Sømåen et al, goes out of it's way to keep deltas for as long a period
-as possible, while there might exist periods of time where you either want to
-ignore new patterns (sudden bursts of non-related work, that then go back to a
-previous pattern), it also lets the patterns get a bit more stale, thus letting the
-risk of too aggressive prefetching increase.
-
-Our main approach is thus looking into whether the TDCPT-scheme can indeed be
-improved upon in a fashion so that it is better (atleast in some regard) than the
-DCPT-scheme it set out to improve on. Our two approaches will be to look into a
-dynamic partitioning of the tiers, and trying to harvest some usage statistics for
-trying to change the mode of operation. The reasoning behind trying to give TDCPT
-a further look into, is that it DID show atleast some improvement upon DCPT, even
-though it overall fared worse than the original DCPT-scheme.
