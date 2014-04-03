@@ -120,7 +120,6 @@ private:
 
 public:
   DeltaEntry (void);
- // DeltaEntry (int n);
   DeltaEntry& operator=(const DeltaEntry &rhs);
   void correlation (Addr *candidates);
   void filter (Addr *candidates);
@@ -132,10 +131,6 @@ public:
   Addr last_address() const { return _last_address; };
 };
 
-void DeltaEntry::print() {
-  DPRINTF(HWPrefetch, "DeltaEntry::print - pc: %d la %d lp %d, dsize: %d, dindex %d\n", _pc, _last_address, _last_prefetch, _data_size, _delta_index);
-}
-
 DeltaEntry::DeltaEntry () :
   _pc(0),
   _last_address(0),
@@ -144,15 +139,6 @@ DeltaEntry::DeltaEntry () :
   _data_size(NUM_DELTAS),
   _delta_index(0)
 {}
-/*
-DeltaEntry::DeltaEntry (int n) :
-  _pc(0),
-  _last_address(0),
-  _last_prefetch(0),
-  _data(n),
-  _data_size(n),
-  _delta_index(0)
-{}*/
 
 DeltaEntry& DeltaEntry::operator=(const DeltaEntry &rhs)
 {
@@ -163,7 +149,6 @@ DeltaEntry& DeltaEntry::operator=(const DeltaEntry &rhs)
   _data_size = rhs._data_size;
   _delta_index = rhs._delta_index;
 
-  DPRINTF(HWPrefetch, "DeltaEntry::operator= - _delta_index: %d last_address: %d, _data_size: %d\n", _delta_index, _last_address, _data_size);
   return *this;
 }
 
@@ -232,6 +217,7 @@ void DeltaEntry::filter (Addr *candidates)
   {
     if (toBePrefetched[i] != 0)
 	  {
+      DPRINTF(HWPrefetch, "Issuing prefetch for %d\n", toBePrefetched[i]);
       issue_prefetch(toBePrefetched[i]);
 	  } 
 	  else 
@@ -243,17 +229,14 @@ void DeltaEntry::filter (Addr *candidates)
 
 void DeltaEntry::initialize (Addr pc, Addr last_address)
 {
-  DPRINTF(HWPrefetch, "DeltaEntry::initialize pre - _delta_index: %d current_address: %d _data_size: %d\n", _delta_index, _last_address, _data_size);
   _pc = pc;
   _last_address = last_address;
 
   _data.zero();
-  DPRINTF(HWPrefetch, "DeltaEntry::initialize post - _delta_index: %d current_address: %d _data_size: %d\n", _delta_index, _last_address, _data_size);
 }
 
 void DeltaEntry::insert (Addr current_address)
 {
-  DPRINTF(HWPrefetch, "DeltaEntry::insert - _delta_index: %d current_address: %d last_address: %d, _data_size: %d\n", _delta_index, current_address, _last_address, _data_size);
   _data[_delta_index++] = current_address - _last_address;
   _last_address = current_address;
 
@@ -323,9 +306,8 @@ void switch_mode_to(bufferMode mode)
     for (int i = 0; i < num_to_compress; i++)
     {
       DeltaEntry *to_compress = &(entries[lru_index++]);
-      to_compress->print();
-      DPRINTF(HWPrefetch, "Compressing i: %d lru_index: %d to_compress: pc: %d, la: %d, TABLE_SIZE: %d", i, lru_index, to_compress->pc(), to_compress->last_address(), TABLE_SIZE); 
-      if (lru_index == TABLE_SIZE) {
+      if (lru_index == TABLE_SIZE) 
+      {
         lru_index = 0;
       }
       t1Entries[i].initialize(to_compress->pc(), to_compress->last_address());
@@ -364,7 +346,9 @@ void switch_mode_to(bufferMode mode)
       if (tier1_index == 0) 
       {
         tier1_index = TIER1_SIZE - 1;
-      } else {
+      } 
+      else 
+      {
         tier1_index--;
       }
     }
@@ -376,7 +360,6 @@ void switch_mode_to(bufferMode mode)
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
-  DPRINTF(HWPrefetch, "locate_entry_for_pc %d, mode: %s, currentT3Size: %d, lruIndex: %d", pc, (gBufferMode == TIER3_ONLY ? "Tier3ONLY" : "TIERED"), gCurrentTier3Size, lru_index);
 	for (int i = 0; i < gCurrentTier3Size; i++)
     {
 		if (entries[i].pc() == pc)
@@ -386,7 +369,7 @@ DeltaEntry* locate_entry_for_pc(Addr pc)
 	}
 
 	if (lru_index == gCurrentTier3Size)
-    {
+  {
 		lru_index = 0;
 	}
 
@@ -426,7 +409,8 @@ void prefetch_init(void)
 void prefetch_access(AccessStat stat)
 {
   prefetch_count++;
-  DPRINTF(HWPrefetch, "Prefetch Access PC: %d Addr: %d Prefetch_count: %d LRU-index: %d\n", stat.pc, stat.mem_addr, prefetch_count, lru_index);
+  //DPRINTF(HWPrefetch, "Prefetch Access PC: %d Addr: %d Prefetch_count: %d LRU-index: %d\n", stat.pc, stat.mem_addr, prefetch_count, lru_index);
+  DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d t3_hit: %d prefetch_count: %d ratiot1: %f ratiot3: %f\n", stat.pc, t1_hit, t3_hit, prefetch_count, ((double)t1_hit/prefetch_count), ((double)t3_hit/prefetch_count));
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
@@ -443,13 +427,9 @@ void prefetch_access(AccessStat stat)
       if (stat.pc == t1Entry->pc())
       {
         DPRINTF(HWPrefetch, "Entry is already in T1, and should be upgraded to T3\n");
-        entry->print();
         entry->initialize(stat.pc, t1Entry->last_address());
-        DPRINTF(HWPrefetch, "Test 1\n");
         entry->insert(curr_addr);
-        DPRINTF(HWPrefetch, "Test 2\n");
         t1Entry->initialize(0, 0);
-        DPRINTF(HWPrefetch, "Test 3\n");
       }
       /* Entry is new (not in either) */
       else
@@ -457,7 +437,6 @@ void prefetch_access(AccessStat stat)
        DPRINTF(HWPrefetch, "Entry is new, not in either\n");
        t1Entry->initialize(stat.pc, curr_addr);
       }
-      DPRINTF(HWPrefetch, "Test 4\n");
     } 
     // We are in TIER3_ONLY-mode, and thus we must modify T3 directly without T1.
     else  
@@ -465,14 +444,12 @@ void prefetch_access(AccessStat stat)
       t1_hit++;
 
       /* Switch mode from tier 3 only to tiered */
-      DPRINTF(HWPrefetch, "Checking if we should switch mode T3->TIERED: t1_hit: %d prefetch_count: %d\n", t1_hit, prefetch_count);
-      if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
+      if ((gBufferMode == TIER3_ONLY) && (((double)t1_hit) / prefetch_count > (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
       {
-        DPRINTF(HWPrefetch, "Switching mode to Tiered\n");
+        DPRINTF(HWPrefetch, "Switching mode to Tiered t1_hit: %d prefetch_count: %d ratio: %f\n", t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
         switch_mode_to(TIERED);
         Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
         t1Entry->initialize(stat.pc, curr_addr);
-        entry->initialize(stat.pc, curr_addr);
       }
       else
       {
@@ -485,20 +462,16 @@ void prefetch_access(AccessStat stat)
   else if (curr_addr - entry->last_address() != 0)
   {
     t3_hit++;
-    DPRINTF(HWPrefetch, "Entry is already in T3\n");
     /* Switch mode from tiered to tier 3 only */
-    DPRINTF(HWPrefetch, "Checking if we should switch mode TIERED->T3: t3_hit: %d prefetch_count: %d\n", t3_hit, prefetch_count);
     if ((gBufferMode == TIERED) && (((double)t3_hit) / prefetch_count > BUFFER_TOLERANCE))
     {
-        DPRINTF(HWPrefetch, "Switching mode to Tier3-only\n");
+        DPRINTF(HWPrefetch, "Switching mode to Tier3-only t3_hit: %d prefetch_count: %d ratio: %f\n", t3_hit, prefetch_count, ((double)t3_hit/prefetch_count));
         switch_mode_to(TIER3_ONLY);
     }
-    DPRINTF(HWPrefetch, "Post potential switch\n");
     entry->insert(curr_addr);
     entry->correlation(candidates);
     entry->filter(candidates);
   }
-  DPRINTF(HWPrefetch, "DONE\n");
 }
 
 void prefetch_complete(Addr addr)
