@@ -382,8 +382,12 @@ DeltaEntry* locate_entry_for_pc(Addr pc)
 
 Tier1Entry* locate_tier1_for_pc(Addr pc)
 {
+  if (gBufferMode == TIER3_ONLY) 
+  {
+    DPRINTF(HWPrefetch, "locate tier1 for PC called while running in TIER3_ONLY_MODE");    
+  }
   /* Loop through all T1 items */
-  for (int i = 0; i < TIER1_SIZE; i++) 
+  for (int i = 0; i < gCurrentTier1Size; i++) 
   {
     if (t1Entries[i].pc() == pc) 
     {
@@ -391,7 +395,7 @@ Tier1Entry* locate_tier1_for_pc(Addr pc)
     }
   }
 
-  if (tier1_index == TIER1_SIZE)
+  if (tier1_index == gCurrentTier1Size)
   {
     tier1_index = 0;
   }
