@@ -12,7 +12,13 @@
 #define TIER1_SIZE 92
 #define NUM_DELTAS 20
 
+#define MODE_TOLERANCE 0.70
+
 typedef int16_t delta_t;
+
+// Global counting of hits //
+int64_t t3_hit = 0; 
+int64_t prefetch_count = 0; 
 
 ///////////////////////////
 ////// DeltaArray   ///////
@@ -263,6 +269,8 @@ void prefetch_init(void)
 
 void prefetch_access(AccessStat stat)
 {
+  prefetch_count++;
+
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
   DeltaEntry *entry = locate_entry_for_pc(stat.pc);
@@ -284,6 +292,13 @@ void prefetch_access(AccessStat stat)
   }
   else if (curr_addr - entry->last_address() != 0)
   {
+    // Hit in t3
+    t3_hit++;
+    // IF IN MIXED  MODE
+      if (t3_hit / prefetch_count > BUFFER_TOLERANCE)
+      {
+        // SWITCH BUFFER MODE (only t3)
+      }
     entry->insert(curr_addr);
     entry->correlation(candidates);
     entry->filter(candidates);
