@@ -222,7 +222,8 @@ void DeltaEntry::insert (Addr current_address)
 Addr prefetch_queue[32]; // Size taken from paper by Grannæs et al.
 int prefetch_queue_pos = 0;
 
-bool in_prefetch_queue(Addr address) {
+bool in_prefetch_queue(Addr address)
+{
   for (int i = 0; i < 32; i++)
   {
     if (prefetch_queue[i] == address)
@@ -248,8 +249,6 @@ void prepare_prefetch(Addr address)
     prefetch_queue_pos--;
   }
 }
-
-
 
 int lru_index = 0;
 std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
