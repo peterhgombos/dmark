@@ -1,0 +1,3 @@
+#!/bin/bash
+export M5_CPU2000=lib/cpu2000
+m5/build/ALPHA_SE/m5.debug --trace-flags=HWPrefetch --remote-gdb-port=0 -re --outdir=output/ammp-user2 m5/configs/example/se.py --checkpoint-dir=lib/cp --checkpoint-restor=1000000000 --at-instruction --detailed --caches --standard-switch --warmup-insts=10000000 --max-inst=10000000 --l2cache --l2size=1MB --prefetcher=policy=proxy --bench=ammp --prefetcher=on_access=True
