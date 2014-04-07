@@ -36,7 +36,7 @@ const uint32_t TABLE_SIZE = 73;
 #define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
 // How high a ratio of Tier1-hits we need before switching to Tiered-mode:
-#define BUFFER_TOLERANCE 0.70
+#define BUFFER_TOLERANCE 0.40
 
 // How low a t1-hit ratio we need before switching to Tier3-only is
 // BUFFER_TOLERANCE - BUFFER_DEADZONE
@@ -61,12 +61,10 @@ int64_t prefetch_count = 0;
 class DeltaArray
 {
 private:
-  delta_t* _arr;	//< The actual elements
-  int _size;		//< The (fixed) size of the table.
+  delta_t _arr[NUM_DELTAS];//< The actual elements
 
 public:
-  ~DeltaArray () { delete[] _arr; }
-  DeltaArray (int n);
+  DeltaArray ();
   DeltaArray (const DeltaArray &rhs); //< Copy constructor, necessary for the mode-switching.
   DeltaArray& operator= (const DeltaArray &rhs); //< operator=, necessary for mode-switching.
   delta_t get(int index) { return (*this)[index]; }
@@ -74,13 +72,9 @@ public:
   void zero(void); //< Clear the table, to use this array for a new entry.
 };
 
-DeltaArray::DeltaArray (int n) :
-  _arr(NULL),
-  _size(n)
+DeltaArray::DeltaArray ()
 {
-  _arr = new delta_t[n];
-
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     _arr[i] = 0;
   }
@@ -88,9 +82,7 @@ DeltaArray::DeltaArray (int n) :
 
 DeltaArray::DeltaArray(const DeltaArray &rhs)
 {
-  _size = rhs._size;
-  _arr = new delta_t[_size];
-  for (int i = 0; i < _size; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     _arr[i] = rhs._arr[i];
   }
@@ -98,10 +90,7 @@ DeltaArray::DeltaArray(const DeltaArray &rhs)
 
 DeltaArray& DeltaArray::operator=(const DeltaArray &rhs)
 {
-  delete[] _arr;
-  _size = rhs._size;
-  _arr = new delta_t[_size];
-  for (int i = 0; i < _size; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     _arr[i] = rhs._arr[i];
   }
@@ -110,23 +99,23 @@ DeltaArray& DeltaArray::operator=(const DeltaArray &rhs)
 
 delta_t& DeltaArray::operator[](int index)
 {
-  if (index >= 0 && index < _size)
+  if (index >= 0 && index < NUM_DELTAS)
   {
     return _arr[index];
   }
   else if (index < 0)
   {
-    return _arr[_size + (index % _size)];
+    return _arr[NUM_DELTAS + (index % NUM_DELTAS)];
   }
   else
   {
-    return _arr[index % _size];
+    return _arr[index % NUM_DELTAS];
   }
 }
 
 void DeltaArray::zero (void)
 {
-  for (int i = 0; i < _size; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     _arr[i] = 0;
   }
@@ -147,7 +136,6 @@ private:
   Addr _last_address; //< The previous address accessed by this PC (4 bytes)
   Addr _last_prefetch; //< The last prefetched address issued by this entry (4 bytes)
   DeltaArray _data;	//< The circular buffer of deltas (NUM_DELTAS * sizeof(delta_t) bytes = 2 * 23 bytes)
-  int _data_size; //< A constant, doesn't count towards the size of the entry
   int _delta_index; //< The index of into the circular buffer for replacement/addition-purposes, doesn't need even a full byte, but we'll count it as 1 byte.
 
   // Summary of size: 4+4+4+NUM_DELTAS*2+1, which with NUM_DELTAS = 23 => 12+56 => 68 bytes
@@ -168,8 +156,7 @@ DeltaEntry::DeltaEntry () :
   _pc(0),
   _last_address(0),
   _last_prefetch(0),
-  _data(NUM_DELTAS),
-  _data_size(NUM_DELTAS),
+  _data(),
   _delta_index(0)
 {}
 
@@ -179,7 +166,6 @@ DeltaEntry& DeltaEntry::operator=(const DeltaEntry &rhs)
   _last_address = rhs._last_address;
   _last_prefetch = rhs._last_prefetch;
   _data = rhs._data;
-  _data_size = rhs._data_size;
   _delta_index = rhs._delta_index;
 
   return *this;
@@ -193,12 +179,12 @@ void DeltaEntry::correlation (Addr *candidates)
   delta_t d2 = _data[_delta_index - 1];
   Addr address = _last_address;
 
-  for (int i = 0; i < _data_size; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     candidates[i] = 0;
   }
 
-  for (int i = _delta_index - 2, j = 0; j < _data_size; i--, j++)
+  for (int i = _delta_index - 2, j = 0; j < NUM_DELTAS; i--, j++)
   {
     delta_t u, v;
     u = _data[i - 1];
@@ -211,7 +197,7 @@ void DeltaEntry::correlation (Addr *candidates)
         address += _data[k];
         candidates[candidate_index++] = address;
 
-        if (candidate_index == _data_size)
+        if (candidate_index == NUM_DELTAS)
         {
           break;
         }
@@ -230,7 +216,7 @@ void DeltaEntry::filter (Addr *candidates)
 {
   Addr toBePrefetched[NUM_DELTAS] = {0};
   int index = 0;
-  for (int i = 0; i < _data_size; i++)
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     if (candidates[i] == 0)
     {
@@ -275,7 +261,7 @@ void DeltaEntry::insert (Addr current_address)
   _data[_delta_index++] = current_address - _last_address;
   _last_address = current_address;
 
-  if (_delta_index == _data_size)
+  if (_delta_index == NUM_DELTAS)
   {
     _delta_index = 0;
   }
@@ -312,9 +298,9 @@ int gCurrentTier1Size = TIER1_SIZE;
 
 bufferMode gBufferMode = TIERED;
 int lru_index = 0;
-std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
+DeltaEntry entries[TABLE_SIZE];
 int tier1_index = 0;
-std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
+Tier1Entry t1Entries[TIER1_SIZE];
 
 void switch_mode_to(bufferMode mode)
 {
@@ -336,7 +322,7 @@ void switch_mode_to(bufferMode mode)
     for (int i = 0; i < num_to_compress; i++)
     {
       DeltaEntry *to_compress = &(entries[lru_index++]);
-      if (lru_index == TABLE_SIZE)
+      if (lru_index >= TABLE_SIZE) 
       {
         lru_index = 0;
       }
@@ -364,6 +350,8 @@ void switch_mode_to(bufferMode mode)
     gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
     gCurrentTier1Size = TIER1_SIZE;
     lru_index = lru_index % gCurrentTier3Size;
+    tier1_index = num_to_compress;
+    tier1_index = tier1_index % TIER1_SIZE;
   }
   else if (gBufferMode == TIERED && mode == TIER3_ONLY)
   {
@@ -385,6 +373,7 @@ void switch_mode_to(bufferMode mode)
     gBufferMode = TIER3_ONLY;
     gCurrentTier3Size = TABLE_SIZE;
     gCurrentTier1Size = 0;
+    lru_index = lru_index & gCurrentTier3Size;
   }
 }
 
@@ -398,7 +387,7 @@ DeltaEntry* locate_entry_for_pc(Addr pc)
     }
   }
 
-  if (lru_index == gCurrentTier3Size)
+	if (lru_index >= gCurrentTier3Size)
   {
     lru_index = 0;
   }
@@ -421,7 +410,7 @@ Tier1Entry* locate_tier1_for_pc(Addr pc)
     }
   }
 
-  if (tier1_index == gCurrentTier1Size)
+  if (tier1_index >= gCurrentTier1Size)
   {
     tier1_index = 0;
   }
