@@ -81,29 +81,34 @@ gather some statistics about the hit-rates for the various tiers to attempt to
 decide better what size the various tiers should be, and whether or not to tier
 at all.
 
-A tier is here understood in the same way as in Sømåen et al, that is, when
-a new PC is encountered, it doesn't immediately take up the space of a full-size
-table entry, but is instead placed in a table of new PCs, along with the address it
-accessed, this table is hereafter refered to as Tier 1. While Sømåen et al. introduced
-a second tier (Tier 2) for PCs that had been seen more than once, but hadn't yet
-reached a point where they would have been seen enough times to generate the necessary
-amount of deltas to perform any prefetching, we opted to skip this tier to keep our
-solution a bit simpler with regards to the tiering structure. But to keep the language
-consistent, we still refer to our tiers in the same regard as Sømåen et al. namely as Tier 1
-for the short table, and Tier 3 for the full length entries.
+A tier is here understood in the same way as in Sømåen et al, that is, when a
+new PC is encountered, it doesn't immediately take up the space of a full-size
+table entry, but is instead placed in a table of new PCs, along with the
+address it accessed, this table is hereafter refered to as Tier 1 (T1). While
+Sømåen et al. introduced a second tier (T2) for PCs that had been seen more
+than once, but hadn't yet reached a point where they would have been seen
+enough times to generate the necessary amount of deltas to perform any
+prefetching, where they would be placed in Tier 3 (T3), we opted to skip this
+tier to keep our solution a bit simpler with regards to the tiering structure.
+To keep the language consistent, the tiers are still referred to using the
+same terms as before, that is where T1 refers to the short table, and T3
+refers to full length entries.
 
-To compensate for the varying usage patterns in the programs, our prefetcher uses the same
-table-memory in two different ways, either it uses it as a pure Tier 3-only setup, which
-would behave exactly like a pure DCTP solution, or it uses a small portion of this to make
-room for a (comparably large) amount of Tier 1-elements. This should in theory help to buffer
-against a sudden large flow tier 1-type PCs, and thus avoid removing Tier 3-entries too early.
-However, to allow the parts of the programs that need more Tier 3 elements than what is available
-when using some of the table for Tier 1, the prefetcher will switch between the tiered operation mode
-, and pure DCTP as follows:
+To compensate for the varying usage patterns in the programs, the prefetcher
+uses the same table-memory in two different ways, either it uses it as a pure
+T3-only setup, which would behave exactly like a pure DCTP solution, or it
+uses a small portion of this to make room for a comparably large amount of
+T1-elements. This should in theory help to buffer against a sudden large
+influx of T1-type PCs, and thus avoids removal of T3 entries
+prematurely.
+
+To allow the parts of the programs that need more T3 elements than what is
+available when using some of the table for T1, the prefetcher will switch
+between the tiered operation mode , and pure DCTP as follows:
 
 As an access happens, the algorithm checks if the PC accessed is in T3. If it's
 not, and the state is tiered mode, the PC will be moved from T1 to T3 if it is
-already in T1, or just added to T1. However, if the state is in tier 3 only
+already in T1, or just added to T1. However, if the state is in T3 only
 mode, a check is done to see if the amount of T1 hits are high enough. The
 thought behind this is that if a certain percentage of the hits are in T1
 already, we can assume that more of the hits will be there, and we will switch
@@ -111,7 +116,7 @@ to tiered mode. Exactly what the percentage of hits should be enough to
 switch should be decided experimentally.
 
 In the same way, if the entry is already in T3, a switch from tiered mode to
-tier 3 only mode is performed if the T1 ratio is lower than a set limit.
+T3 only mode is performed if the T1 ratio is lower than a set limit.
 
 % TODO: Fill in more when the architecture becomes a bit clearer.
 
