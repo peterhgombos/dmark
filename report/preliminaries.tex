@@ -38,7 +38,7 @@ any significant speedup, but did lower the memory footprint.
 
 \begin{algorithm}
 \footnotesize
-\caption{Dynamic Tiered DCPT \cite{Grannaes481837}}
+\caption{Dynamic Tiered DCPT}
   \begin{algorithmic}[1]
     \Procedure{DCPT}{Load address $PC$, Miss address $addr$}
       \State $entry \gets \Call{TableLookUp}{PC}$
@@ -75,7 +75,7 @@ any significant speedup, but did lower the memory footprint.
 \subsection{Prefetcher Description}
 
 Our prefetcher, Dynamically Tiered Delta Correlating Prediction
-Tables aims to have dynamically sized tiers to improve upon the potential
+Tables (algorithm \ref{alg:dcpt_dyn_tier}) aims to have dynamically sized tiers to improve upon the potential
 pitfalls that the original TDCPT-prefetcher fell into. Additionally it will
 gather some statistics about the hit-rates for the various tiers to attempt to
 decide better what size the various tiers should be, and whether or not to tier
