@@ -1,6 +1,5 @@
 \section{Preliminaries}
 
-
 The original Delta Correlating Prediction Tables algorithm can be seen in
 algorithm \ref{alg:dcpt_orig}, as described in Grannæs et.
 al.\cite{Grannaes481837}. Initially, the PC is looked up in a table of entries,
@@ -8,11 +7,9 @@ and if it is not found, a replacement entry is created. If it was in the table,
 the new delta from the last address to the current is added to the list of
 deltas. 
 
-
 The tiered version of the DCPT exchanges the table of entries with different
 tier tables, which are searched through sequentially. The TDCPT did not yield
 any significant speedup, but did lower the memory footprint.
-
 
 \begin{algorithm}
 \footnotesize
@@ -37,6 +34,49 @@ any significant speedup, but did lower the memory footprint.
     \EndProcedure
   \end{algorithmic}
   \label{alg:dcpt_orig}
+\end{algorithm}
+
+\begin{algorithm}
+\footnotesize
+\caption{Dynamic Tiered DCPT \cite{Grannaes481837}}
+  \begin{algorithmic}[1]
+    \Procedure{DCPT}{Load address $PC$, Miss address $addr$}
+      \State $entry \gets \Call{TableLookUp}{PC}$
+
+      \If {$entry.pc \neq PC$}
+        \If {$mode = Tiered$}
+          \State $entry \gets \Call{T1TableLookUp}{PC}$
+          \If {$entry.pc = PC$}
+            \State $\Call{MoveToT3}{entry}$
+          \Else
+            \State $entry.pc \gets PC$
+            \State $entry.lastAddress \gets addr$
+            \State $entry.deltas[\;] \gets \emptyset$
+            \State $entry.lastPrefetch \gets 0$
+          \EndIf
+        \Else
+          \If {$t1\_hits \geq tolerance$}
+            \State $\Call{SwitchMode}{TIERED}$ \\
+            \State $entry.pc \gets PC$
+            \State $entry.lastAddress \gets addr$
+            \State $entry.deltas[\;] \gets \emptyset$
+            \State $entry.lastPrefetch \gets 0$
+          \Else
+            
+          \EndIf
+        \EndIf
+
+      \ElsIf {$addr - entry.lastAddress \neq 0$}
+        \State $entry.deltas[\;] \gets addr - entry.lastAddress$
+        \State $entry.lastAddress \gets addr$ \\
+
+        \State $candidates[\;] \gets \Call{DeltaCorrelation}{entry}$
+        \State $prefetches[\;] \gets \Call{PrefetchFilter}{entry, candidates[\:]}$
+        \State $\Call{IssuePrefetches}{prefetches[\:]}$
+      \EndIf
+    \EndProcedure
+  \end{algorithmic}
+  \label{alg:dcpt_dyn_tier}
 \end{algorithm}
 
 
