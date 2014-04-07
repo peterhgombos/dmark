@@ -62,7 +62,7 @@ any significant speedup, but did lower the memory footprint.
       \ElsIf {$addr - entry.lastAddress \neq 0$}
 	\If {$mode = Tiered \ \& $\\
 	  \hspace{11mm}$t1\_hits\_ratio \leq tolerance - deadzone$}
-	  \State $\Call{SwitchMode}{TIER3_ONLY}$
+	  \State $\Call{SwitchMode}{TIER3\_ONLY}$
 	\EndIf
 	\State $\Call{AddToT3}{entry}$
       \EndIf
