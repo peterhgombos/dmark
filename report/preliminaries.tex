@@ -49,30 +49,22 @@ any significant speedup, but did lower the memory footprint.
           \If {$entry.pc = PC$}
             \State $\Call{MoveToT3}{entry}$
           \Else
-            \State $entry.pc \gets PC$
-            \State $entry.lastAddress \gets addr$
-            \State $entry.deltas[\;] \gets \emptyset$
-            \State $entry.lastPrefetch \gets 0$
+	    \State $\Call{AddToT1}{entry}$ 
           \EndIf
         \Else
-          \If {$t1\_hits \geq tolerance$}
+          \If {$t1\_hits\_ratio \geq tolerance$}
             \State $\Call{SwitchMode}{TIERED}$ \\
-            \State $entry.pc \gets PC$
-            \State $entry.lastAddress \gets addr$
-            \State $entry.deltas[\;] \gets \emptyset$
-            \State $entry.lastPrefetch \gets 0$
+	    \State $\Call{AddToT1}{entry}$
           \Else
-            
+	    \State $\Call{AddToT3}{entry}$
           \EndIf
         \EndIf
-
       \ElsIf {$addr - entry.lastAddress \neq 0$}
-        \State $entry.deltas[\;] \gets addr - entry.lastAddress$
-        \State $entry.lastAddress \gets addr$ \\
-
-        \State $candidates[\;] \gets \Call{DeltaCorrelation}{entry}$
-        \State $prefetches[\;] \gets \Call{PrefetchFilter}{entry, candidates[\:]}$
-        \State $\Call{IssuePrefetches}{prefetches[\:]}$
+	\If {$mode = Tiered \ \& $\\
+	  \hspace{11mm}$t1\_hits\_ratio \leq tolerance - deadzone$}
+	  \State $\Call{SwitchMode}{TIER3_ONLY}$
+	\EndIf
+	\State $\Call{AddToT3}{entry}$
       \EndIf
     \EndProcedure
   \end{algorithmic}
