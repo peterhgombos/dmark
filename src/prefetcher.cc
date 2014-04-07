@@ -25,7 +25,7 @@ typedef int16_t delta_t;
 
 // Global counting of hits //
 int64_t t1_hit = 0;
-int64_t prefetch_count = 0; 
+int64_t prefetch_count = 0;
 
 ///////////////////////////
 ////// DeltaArray   ///////
@@ -162,7 +162,7 @@ void DeltaEntry::correlation (Addr *candidates)
 
   for (int i = 0; i < _data_size; i++)
   {
-      candidates[i] = 0;
+    candidates[i] = 0;
   }
 
   for (int i = _delta_index - 2, j = 0; j < _data_size; i--, j++)
@@ -188,7 +188,7 @@ void DeltaEntry::correlation (Addr *candidates)
       }
       break;
     }
-	break;
+    break;
   }
 }
 
@@ -203,28 +203,28 @@ void DeltaEntry::filter (Addr *candidates)
       break;
     }
 
-    if (_last_prefetch == candidates[i]) 
-	  {
+    if (_last_prefetch == candidates[i])
+    {
       index = 0;
       toBePrefetched[0] = 0;
-	  }
+    }
     if (!in_cache(candidates[i]) && !in_mshr_queue(candidates[i]))
     {
-	    toBePrefetched[index++] = candidates[i];
+      toBePrefetched[index++] = candidates[i];
       _last_prefetch = candidates[i];
     }
   }
-  for (int i = 0; i < NUM_DELTAS; i++) 
+  for (int i = 0; i < NUM_DELTAS; i++)
   {
     if (toBePrefetched[i] != 0)
-	  {
+    {
       DPRINTF(HWPrefetch, "Issuing prefetch for %d\n", toBePrefetched[i]);
       issue_prefetch(toBePrefetched[i]);
-	  } 
-	  else 
-	  {
-	    break;
-	  }
+    }
+    else
+    {
+      break;
+    }
   }
 }
 
@@ -274,7 +274,7 @@ enum bufferMode
 
 
 int gCurrentTier3Size = TABLE_SIZE - TIER3_REDUCTION;
-int gCurrentTier1Size = TIER1_SIZE; 
+int gCurrentTier1Size = TIER1_SIZE;
 
 bufferMode gBufferMode = TIERED;
 int lru_index = 0;
@@ -282,7 +282,7 @@ std::vector<DeltaEntry> entries(TABLE_SIZE, DeltaEntry());
 int tier1_index = 0;
 std::vector<Tier1Entry> t1Entries(TIER1_SIZE, Tier1Entry());
 
-void switch_mode_to(bufferMode mode) 
+void switch_mode_to(bufferMode mode)
 {
   int num_to_compress = TIER3_REDUCTION;
 
@@ -302,7 +302,7 @@ void switch_mode_to(bufferMode mode)
     for (int i = 0; i < num_to_compress; i++)
     {
       DeltaEntry *to_compress = &(entries[lru_index++]);
-      if (lru_index == TABLE_SIZE) 
+      if (lru_index == TABLE_SIZE)
       {
         lru_index = 0;
       }
@@ -335,15 +335,15 @@ void switch_mode_to(bufferMode mode)
   {
     // Simulate expansion, this will potentially have some issues with the lru-position
     int num_to_decompress = TIER3_REDUCTION;
-    for (int i = 0; i < num_to_decompress; i++) 
+    for (int i = 0; i < num_to_decompress; i++)
     {
       int offset = TABLE_SIZE - TIER3_REDUCTION + i;
       entries[offset].initialize(t1Entries[tier1_index].pc(), t1Entries[tier1_index].last_address());
-      if (tier1_index == 0) 
+      if (tier1_index == 0)
       {
         tier1_index = TIER1_SIZE - 1;
-      } 
-      else 
+      }
+      else
       {
         tier1_index--;
       }
@@ -356,32 +356,32 @@ void switch_mode_to(bufferMode mode)
 
 DeltaEntry* locate_entry_for_pc(Addr pc)
 {
-	for (int i = 0; i < gCurrentTier3Size; i++)
-    {
-		if (entries[i].pc() == pc)
-    {
-			return &(entries[i]);
-		}
-	}
-
-	if (lru_index == gCurrentTier3Size)
+  for (int i = 0; i < gCurrentTier3Size; i++)
   {
-		lru_index = 0;
-	}
+    if (entries[i].pc() == pc)
+    {
+      return &(entries[i]);
+    }
+  }
 
-	return &(entries[lru_index++]);
+  if (lru_index == gCurrentTier3Size)
+  {
+    lru_index = 0;
+  }
+
+  return &(entries[lru_index++]);
 }
 
 Tier1Entry* locate_tier1_for_pc(Addr pc)
 {
-  if (gBufferMode == TIER3_ONLY) 
+  if (gBufferMode == TIER3_ONLY)
   {
-    DPRINTF(HWPrefetch, "locate tier1 for PC called while running in TIER3_ONLY_MODE");    
+    DPRINTF(HWPrefetch, "locate tier1 for PC called while running in TIER3_ONLY_MODE");
   }
   /* Loop through all T1 items */
-  for (int i = 0; i < gCurrentTier1Size; i++) 
+  for (int i = 0; i < gCurrentTier1Size; i++)
   {
-    if (t1Entries[i].pc() == pc) 
+    if (t1Entries[i].pc() == pc)
     {
       return &(t1Entries[i]);
     }
@@ -425,11 +425,12 @@ void prefetch_access(AccessStat stat)
   /* Entry is not in T3 */
   if (stat.pc != entry->pc())
   {
-    /* We are in TIERED-mode, use T1 for initial-attempts */ 
-    if (gBufferMode == TIERED) {
+    /* We are in TIERED-mode, use T1 for initial-attempts */
+    if (gBufferMode == TIERED)
+    {
       Tier1Entry *t1Entry = locate_tier1_for_pc(stat.pc);
 
-     /* Entry is already in T1, and should be upgraded to T3 */
+      /* Entry is already in T1, and should be upgraded to T3 */
       if (stat.pc == t1Entry->pc())
       {
         DPRINTF(HWPrefetch, "Entry is already in T1, and should be upgraded to T3\n");
@@ -445,9 +446,9 @@ void prefetch_access(AccessStat stat)
         DPRINTF(HWPrefetch, "Entry is new, not in either\n");
         t1Entry->initialize(stat.pc, curr_addr);
       }
-    } 
+    }
     // We are in TIER3_ONLY-mode, and thus we must modify T3 directly without T1.
-    else  
+    else
     {
       t1_hit++;
 
@@ -472,8 +473,8 @@ void prefetch_access(AccessStat stat)
     /* Switch mode from tiered to tier 3 only */
     if ((gBufferMode == TIERED) && (((double)t1_hit) / prefetch_count < (BUFFER_TOLERANCE - BUFFER_DEADZONE)))
     {
-        DPRINTF(HWPrefetch, "Switching mode to Tier3-only t1_hit: %d prefetch_count: %d ratio: %f\n", t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
-        switch_mode_to(TIER3_ONLY);
+      DPRINTF(HWPrefetch, "Switching mode to Tier3-only t1_hit: %d prefetch_count: %d ratio: %f\n", t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
+      switch_mode_to(TIER3_ONLY);
     }
     entry->insert(curr_addr);
     entry->correlation(candidates);
@@ -483,7 +484,7 @@ void prefetch_access(AccessStat stat)
 
 void prefetch_complete(Addr addr)
 {
-    /*
-     * Called when a block requested by the prefetcher has been loaded.
-     */
+  /*
+   * Called when a block requested by the prefetcher has been loaded.
+   */
 }
