@@ -404,14 +404,14 @@ void prefetch_init(void)
 
 void prefetch_access(AccessStat stat)
 {
-  if (prefetch_count != LLONG_MAX)
+  if (prefetch_count != (2 << 8))
   {
     prefetch_count++;
   }
   else
   {
-    prefetch_count <<= 32;
-    t1_hit <<= 32;
+    prefetch_count >>= 8;
+    t1_hit >>= 8;
   }
 
 
