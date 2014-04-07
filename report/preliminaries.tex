@@ -96,7 +96,7 @@ refers to full length entries.
 
 To compensate for the varying usage patterns in the programs, the prefetcher
 uses the same table-memory in two different ways, either it uses it as a pure
-T3-only setup, which would behave exactly like a pure DCTP solution, or it
+T3-only setup, which would behave exactly like a pure DCPT solution, or it
 uses a small portion of this to make room for a comparably large amount of
 T1-elements. This should in theory help to buffer against a sudden large
 influx of T1-type PCs, and thus avoids removal of T3 entries
@@ -104,7 +104,7 @@ prematurely.
 
 To allow the parts of the programs that need more T3 elements than what is
 available when using some of the table for T1, the prefetcher will switch
-between the tiered operation mode , and pure DCTP as follows:
+between the tiered operation mode , and pure DCPT as follows:
 
 As an access happens, the algorithm checks if the PC accessed is in T3. If it's
 not, and the state is tiered mode, the PC will be moved from T1 to T3 if it is
