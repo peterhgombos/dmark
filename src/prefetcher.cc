@@ -1,7 +1,5 @@
 /*
- * A sample prefetcher which does sequential one-block lookahead.
- * This means that the prefetcher fetches the next block _after_ the one that
- * was just accessed. It also ignores requests to blocks already in the cache.
+ * An implementation of a simple version of Dynamically Tiered DCTP.
  */
 
 #include <vector>
@@ -9,18 +7,43 @@
 
 #include "interface.hh"
 
-const uint32_t TABLE_SIZE = 73; // The full table size, including the Tier1-elements if in Tiered mode.
+/*
+ * Specs for the test-set:
+ */
+
+// The full table size, including the Tier1-elements if in Tiered mode,
+// this is also the full size of the Tier3-table when in Tier3-only mode:
+const uint32_t TABLE_SIZE = 73;
+
+// The number of Tier1 elements when running in Tiered-mode:
 #define TIER1_SIZE 91
+// The amount of deltas per entry in a full-sized Tier3-entry:
 #define NUM_DELTAS 23
-// These should in _theory_ be sizeofs, but since Addr is larger than what we actually need, we just lie
+
+// These should in _theory_ be sizeofs, but since Addr is larger
+// than what we actually need, we just lie:
+
+// The size (in bytes) of a Tier1-entry (PC + Last Address):
 #define TIER1_ENTRY_SIZE 8
+
+// The size (in bytes) of a full-sized Tier3-entry:
 #define TIER3_ENTRY_SIZE (8+4+NUM_DELTAS*2+1)
+
+// The ratio between the size of a Tier3-entry and a Tier1-entry:
 #define TIER3_RATIO (TIER3_ENTRY_SIZE/TIER1_ENTRY_SIZE) // Make sure this is an integral ratio.
+
+// How much of the Tier3-table that is used for Tier1-elements when in Tiered-mode:
 #define TIER3_REDUCTION (TABLE_SIZE - (TIER1_SIZE/TIER3_RATIO))
 
+// How high a ratio of Tier1-hits we need before switching to Tiered-mode:
 #define BUFFER_TOLERANCE 0.70
+
+// How low a t1-hit ratio we need before switching to Tier3-only is
+// BUFFER_TOLERANCE - BUFFER_DEADZONE
 #define BUFFER_DEADZONE 0.10
 
+// The type used for storing deltas, 16 bits should be plenty according to
+// Grannæs et al.
 typedef int16_t delta_t;
 
 // Global counting of hits //
@@ -31,20 +54,24 @@ int64_t prefetch_count = 0;
 ////// DeltaArray   ///////
 ///////////////////////////
 
+/**
+ * @class DeltaArray - A convenience class for implementing the circular buffer
+ * of deltas that are used in the DCPT-tables.
+ */
 class DeltaArray
 {
 private:
-  delta_t* _arr;
-  int _size;
+  delta_t* _arr;	//< The actual elements
+  int _size;		//< The (fixed) size of the table.
 
 public:
   ~DeltaArray () { delete[] _arr; }
   DeltaArray (int n);
-  DeltaArray (const DeltaArray &rhs);
-  DeltaArray& operator= (const DeltaArray &rhs);
+  DeltaArray (const DeltaArray &rhs); //< Copy constructor, necessary for the mode-switching.
+  DeltaArray& operator= (const DeltaArray &rhs); //< operator=, necessary for mode-switching.
   delta_t get(int index) { return (*this)[index]; }
   delta_t& operator[](int index);
-  void zero(void);
+  void zero(void); //< Clear the table, to use this array for a new entry.
 };
 
 DeltaArray::DeltaArray (int n) :
@@ -109,16 +136,21 @@ void DeltaArray::zero (void)
 ////// DeltaEntry   ///////
 ///////////////////////////
 
+/**
+ * @class DeltaEntry a DCTP-style entry that collects the relevant deltas
+ * accessed by a specific program-counter.
+ */
 class DeltaEntry
 {
 private:
-  Addr _pc;
-  Addr _last_address;
-  Addr _last_prefetch;
-  DeltaArray _data;
-  int _data_size;
-  int _delta_index;
+  Addr _pc;	//< The program Counter (4 bytes in a 32-bit machine)
+  Addr _last_address; //< The previous address accessed by this PC (4 bytes)
+  Addr _last_prefetch; //< The last prefetched address issued by this entry (4 bytes)
+  DeltaArray _data;	//< The circular buffer of deltas (NUM_DELTAS * sizeof(delta_t) bytes = 2 * 23 bytes)
+  int _data_size; //< A constant, doesn't count towards the size of the entry
+  int _delta_index; //< The index of into the circular buffer for replacement/addition-purposes, doesn't need even a full byte, but we'll count it as 1 byte.
 
+  // Summary of size: 4+4+4+NUM_DELTAS*2+1, which with NUM_DELTAS = 23 => 12+56 => 68 bytes
 public:
   DeltaEntry (void);
   DeltaEntry& operator=(const DeltaEntry &rhs);
@@ -153,6 +185,7 @@ DeltaEntry& DeltaEntry::operator=(const DeltaEntry &rhs)
   return *this;
 }
 
+// Algorithm 2 in Grannæs et al.
 void DeltaEntry::correlation (Addr *candidates)
 {
   int candidate_index = 0;
@@ -192,6 +225,7 @@ void DeltaEntry::correlation (Addr *candidates)
   }
 }
 
+// Algorithm 3 in Grannæs et al
 void DeltaEntry::filter (Addr *candidates)
 {
   Addr toBePrefetched[NUM_DELTAS] = {0};
@@ -414,8 +448,6 @@ void prefetch_access(AccessStat stat)
     t1_hit >>= 8;
   }
 
-
-  //DPRINTF(HWPrefetch, "Prefetch Access PC: %d Addr: %d Prefetch_count: %d LRU-index: %d\n", stat.pc, stat.mem_addr, prefetch_count, lru_index);
   DPRINTF(HWPrefetch, "Prefetch Access PC: %d t1_hit %d prefetch_count: %d ratiot1: %f\n", stat.pc, t1_hit, prefetch_count, ((double)t1_hit/prefetch_count));
   /* pf_addr is now an address within the _next_ cache block */
   Addr curr_addr = stat.mem_addr;
