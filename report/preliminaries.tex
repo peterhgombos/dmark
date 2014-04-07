@@ -1,20 +1,18 @@
 \section{Preliminaries}
 
-\subsection{Background}
 
-Relevant work we'll be looking at: \cite{Grannaes355273}, \cite{Grannaes481837}, \cite{Jahre355239}
+The original Delta Correlating Prediction Tables algorithm can be seen in
+algorithm \ref{alg:dcpt_orig}, as described in Grannæs et.
+al.\cite{Grannaes481837}. Initially, the PC is looked up in a table of entries,
+and if it is not found, a replacement entry is created. If it was in the table,
+the new delta from the last address to the current is added to the list of
+deltas. 
 
-\subsubsection{Delta Correlating Prediciton Tables}
 
-\subsubsection{Tiered Delta Correlating Prediciton Tables}
+The tiered version of the DCPT exchanges the table of entries with different
+tier tables, which are searched through sequentially. The TDCPT did not yield
+any significant speedup, but did lower the memory footprint.
 
-The TDCPT~\cite{Somaen} aimed to improve upon DCPT~\cite{Grannaes481837}, by
-adding "tiers" to the ring buffer-scheme that was used in DCPT. The reasoning
-behind this was that a large amount of the accesses that filtered through the
-scheme were only used a few times, without creating proper patterns. (50\%
-according to Sømåen et al).
-
-% TODO: Something about how it failed
 
 \begin{algorithm}
 \footnotesize
@@ -38,36 +36,14 @@ according to Sømåen et al).
       \EndIf
     \EndProcedure
   \end{algorithmic}
+  \label{alg:dcpt_orig}
 \end{algorithm}
 
-\begin{algorithm}
-\footnotesize
-\caption{Original DCPT}
-  \begin{algorithmic}[1]
-    \Procedure{DCPT}{Load address $PC$, Miss address $addr$} \\
-      \State $r \gets \Call{TableLookUp}{PC}$
-
-      \If {$entry.pc \neq PC$}
-        \State $entry.pc \gets PC$
-        \State $entry.lastAddress \gets addr$
-        \State $entry.deltas[\;] \gets \emptyset$
-        \State $entry.lastPrefetch \gets 0$
-      \ElsIf {$addr - entry.lastAddress \neq 0$}
-        \State $entry.deltas[\;] \gets addr - entry.lastAddress$
-        \State $entry.lastAddress \gets addr$ \\
-
-        \State $candidates[\;] \gets \Call{DeltaCorrelation}{entry}$
-        \State $prefetches[\;] \gets \Call{PrefetchFilter}{entry, candidates[\:]}$
-        \State $\Call{IssuePrefetches}{prefetches[\:]}$
-      \EndIf
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
 
 \subsection{Prefetcher Description}
 
-Our prefetcher (working title: Dynamically Tiered Delta Correlating Prediction
-Tables) aims to have dynamically sized tiers to improve upon the potential
+Our prefetcher, Dynamically Tiered Delta Correlating Prediction
+Tables aims to have dynamically sized tiers to improve upon the potential
 pitfalls that the original TDCPT-prefetcher fell into. Additionally it will
 gather some statistics about the hit-rates for the various tiers to attempt to
 decide better what size the various tiers should be, and whether or not to tier
@@ -80,4 +56,4 @@ at all.
 We will be investigating the value of dynamically tiering the DCPT by
 implementing the algorithm in software and testing it with a subset of the SPEC
 CPU2000 benchmark.  The algorithm will be implemented in C and run on the M5
-simulator.
+simulator, running on the Kongull cluster at NTNU.
