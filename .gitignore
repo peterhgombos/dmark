@@ -48,3 +48,6 @@
 *.out
 *.synctex.gz
 *.pdf
+
+# Vim
+*.swp
