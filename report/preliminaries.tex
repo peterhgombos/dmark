@@ -72,14 +72,14 @@ when using some of the table for Tier 1, the prefetcher will switch between the 
 As an access happens, the algorithm checks if the PC accessed is in T3. If it's
 not, and the state is tiered mode, the PC will be moved from T1 to T3 if it is
 already in T1, or just added to T1. However, if the state is in tier 3 only
-mode, there is done a check to see if the amount of T1 hits are high enough. The
+mode, a check is done to see if the amount of T1 hits are high enough. The
 thought behind this is that if a certain percentage of the hits are in T1
 already, we can assume that more of the hits will be there, and we will switch
 to tiered mode. Exactly what the percentage of hits should be enough to
 switch should be decided experimentally.
 
 In the same way, if the entry is already in T3, a switch from tiered mode to
-tier 3 only mode if the T1 ratio is lower than a set limit.
+tier 3 only mode is performed if the T1 ratio is lower than a set limit.
 
 % TODO: Fill in more when the architecture becomes a bit clearer.
 
