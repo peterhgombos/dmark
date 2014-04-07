@@ -1,0 +1,22 @@
+set terminal svg
+set output 'akamai.svg'
+
+set xdata time
+set timefmt "%S"
+set xlabel "Trigger point"
+
+set autoscale
+
+set ylabel "Speedup"
+set format y "%s"
+
+set title "bzip2 graphic"
+set key reverse Left outside
+set grid
+
+set style data points
+
+set datafile separator ":"
+
+plot  "bzip2_graphic_speedup30" using 1:2 title "30", \
+      "bzip2_graphic_speedup60" using 1:2 title "60"
