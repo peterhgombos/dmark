@@ -118,13 +118,15 @@ switch should be decided experimentally.
 In the same way, if the entry is already in T3, a switch from tiered mode to
 T3 only mode is performed if the T1 ratio is lower than a set limit.
 
-% TODO: Fill in more when the architecture becomes a bit clearer.
-
 \subsection{Methodology}
 
-We will be investigating the value of dynamically tiering the DCPT by
-implementing the algorithm in software and testing it with a subset of the SPEC
-CPU2000 benchmark.  The algorithm will be implemented in C++ and run on the M5
-simulator, running on the Kongull cluster at NTNU, as well as being tested locally
-on our own machines to compensate for the feedback delay that Kongull's queuing will
-have while developing the simulation.
+Initially the standard DCPT algorithm was implemented and tested. The prefetcher ran 
+with a speedup comparative to the results of Grannæs et. al. As  DTDCPT
+is an extension of the DCPT algorithm, this was beneficial to have as a
+starting point.
+
+The DTDCPT implementation was done while developing the algorithm, as the logic
+for switching tier modes was indepent of the code running the tiers. When the
+logic was done, it was implemented in the algorithm with prelimenary values,
+to be changed experimentally.
+
