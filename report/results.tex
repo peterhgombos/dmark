@@ -41,15 +41,15 @@ cases is counter productive. Considering the results of Sømåen et al's results
 to consider the latter as the more likely reasoning.
 
 \subsection{Future Work}
-The tests run did not show any usefull benefit to attempting a dynamically switching
+The tests run did not show any useful benefit to attempting a dynamically switching
 between statically defined tier-sizes with a single tier. Further looking into dynamically
 resizing the buffer to a selection of different variable sizes might better suit the varying
-access patterns, and could be a possible idea for further looking into the possibilites of tiering.
+access patterns, and could be a possible idea for further looking into the possibilities of tiering.
 A current weakness of both this attempt at looking into tiering the DCPT-entries, as well as Sømåen
 et. al's attempt, is that tiering may have the possibility of keeping stale elements for a longer period,
 so looking into whether this is responsible for it's rather low effectiveness might also be interesting.
 
-Looking into even smaller memory footprints than what was tested in this paper might also be intereesting,
+Looking into even smaller memory footprints than what was tested in this paper might also be interesting,
 as when the memory footprints go down, the chance of flushing out interesting items from a T3-buffer might
 perhaps increase a bit more, as Figure 13 in Grannæs et al suggests that there is a rather steep increase in
 speedup between 20 and 30 entries.
