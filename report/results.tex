@@ -2,7 +2,8 @@
 \begin{figure}
 \centering
 \includegraphics[width=0.55\textwidth]{images/dmarkchart.png}
-\caption{Chart of the coverage of the different tests}
+\caption{The coverage of the different tests}
+\label{fig:chart}
 \end{figure}
 No real difference was found between the various trigger values for switching modes,
 but this is not surprising when considering that the prefetcher seems to have results
@@ -20,9 +21,11 @@ From testing the algorithm in a purely Tiered mode, we notice that the
 space that is used for the T1-table can be used more effectively as a T3
 table in general, however, there seems to be some smaller cases where dynamically
 switching between tiered and non-tiered mode yields a tiny advantage in coverage
-over the original DCPT algorithm. This is a fractional gain for the rather
+over the original DCPT algorithm (as can be seen in figure \ref{fig:chart}). 
+This is a fractional gain for the rather
 large increase in complexity that is required to support dynamically changing how
 the storage space required is used.
+
 
 \subsection{Conclusion}
 As there are no clear difference in the results of the DTDCPT from the ordinary
