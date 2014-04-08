@@ -17,6 +17,13 @@ were finally found to stem from some faulty memory management on our part, a
 thorough set of tests was not possible to produce. The limited set of tests
 that were run did however show very negligible difference.
 
+Our tests were run with mostly 36 and 73 as T3-sizes (correspondingly with 42 and 91),
+allowing for some variation for typos and miscalculations, the lower of these fall within the
+flatter part of the results shown in Fig 13 of Grannæs et al, while the upper is close to the
+other flat part, so the choices might not have been optimal for finding any variation in results,
+a better approach might have been to chose data points placed closer to the middle of the steep parts
+of Grannæs et al's graph.
+
 From testing the algorithm in a purely Tiered mode, we notice that the
 space that is used for the T1-table can be used more effectively as a T3
 table in general, however, there seems to be some smaller cases where dynamically
