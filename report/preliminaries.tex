@@ -118,6 +118,23 @@ switch should be decided experimentally.
 In the same way, if the entry is already in T3, a switch from tiered mode to
 T3 only mode is performed if the T1 ratio is lower than a set limit.
 
+Switching from T3 only to tiered mode happens by "compressing" enough elements in T3 to make
+room for the T1-entries (which in this case are 1/8 of the size of a T3-entry),
+and placing them in corresponding positions in T1. In this case, compression means
+reducing an element to it's T1-form, keeping only the last address field, and the
+PC. The elements chosen for compression are the elements that are next in line for
+replacement in the T3-buffer. This operation happens in-place, and fills the remaining
+T1-elements with 0 for PC and last address, to avoid any faulty matching that would have
+occured by interpreting the T3 data that was replaced by T1 data during this process.
+
+Switching from tiered mode to T3-only mode, is done by "decompressing" the latest additions
+to the T1-buffer that will fit in the now larger T3-buffer.
+
+In the simulation, for reasons of keeping the code simple, the in-place solution is skipped, and instead
+simulated with two separate buffers, that still keep the overall memory usage fixed. When in tiered-mode,
+the T3-buffer is thus treated as being smaller than in T3-only mode, which should, in theory give the same
+results as explicitly performing the operations in-place.
+
 \subsection{Methodology}
 
 Initially the standard DCPT algorithm was implemented and tested. The prefetcher ran 
@@ -130,4 +147,12 @@ for switching tier modes was independent of the code running the tiers. When the
 logic was done, it was implemented in the algorithm with preliminary values,
 to be changed experimentally.
 
+The choices of sizes and elements, were done in a fashion to allow the T3-entry sizes to
+be an integral multiple of the T1-entry sizes, so that it would be simple to repurpose the
+same storage area for T1 when switching modes, this does however lead us to counting a T3-entry
+that would otherwise be 63-bytes, or a bit less, as 64 bytes for instance. Due to some mixups with
+the math on our part, our local tests did not follow this pattern consistently though.
 
+A memory footprint close to 4KiB, and one closer to 2 KiB was considered, with the lower memory footprint chosen,
+to experiment in an area where we would expect to see a larger variation, partially influenced by Figure 13 in Grannæs et al.
+which shows that a number of entries lower than 30 has a very steep increase per extra entry, while the results flatten out a bit after that.
